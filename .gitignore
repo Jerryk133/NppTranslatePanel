@@ -43,6 +43,7 @@ x64/
 .builds
 .build-stage/
 artifacts/
+.submission/
 
 
 # Visual Studio profiler
