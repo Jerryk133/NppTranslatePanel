@@ -176,17 +176,9 @@
       <DEBUG32 Include="bin\Debug\*.*" />
       <NPP64BIT Include="$(NppPluginsDir64)\$(AssemblyName)" />
       <NPP32BIT Include="$(NppPluginsDir32)\$(AssemblyName)" />
-      <TRANSLATION_ORIGIN Include="..\translation\*.json5" />
-      <TRANSLATION32 Include="$(NppPluginsDir32)\$(AssemblyName)\translation" />
-      <TRANSLATION64 Include="$(NppPluginsDir64)\$(AssemblyName)\translation" />
     </ItemGroup>
     <MakeDir Directories="@(NPP64BIT)" Condition=" '$(Platform)' == 'x64' " />
     <MakeDir Directories="@(NPP32BIT)" Condition=" '$(Platform)' == 'x86' " />
-    <!-- copy all translation files to NPP plugin dir's subdirectory -->
-    <MakeDir Directories="@(TRANSLATION64)" Condition=" '$(Platform)' == 'x64' " />
-    <MakeDir Directories="@(TRANSLATION32)" Condition=" '$(Platform)' == 'x86' " />
-    <Copy Condition=" '$(Platform)' == 'x64' " SourceFiles="@(TRANSLATION_ORIGIN)" DestinationFolder="@(TRANSLATION64)" SkipUnchangedFiles="true" />
-    <Copy Condition=" '$(Platform)' == 'x86' " SourceFiles="@(TRANSLATION_ORIGIN)" DestinationFolder="@(TRANSLATION32)" SkipUnchangedFiles="true" />
     <!-- copy all files in current bin directory to NPP plugin dir -->
     <Copy SourceFiles="@(RELEASE64)" Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' " DestinationFolder="@(NPP64BIT)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(RELEASE32)" Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' " DestinationFolder="@(NPP32BIT)" SkipUnchangedFiles="true" />

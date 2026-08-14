@@ -83,7 +83,7 @@ The plugin splits the document into paragraphs and caches completed translations
 
 ## Building from source
 
-Open [NppCSharpPluginPack.sln](NppTranslatePanel/NppCSharpPluginPack.sln) in Visual Studio 2022 and build one of these configurations:
+Open [NppTranslatePanel.sln](NppTranslatePanel/NppTranslatePanel.sln) in Visual Studio 2022 and build one of these configurations:
 
 - `Release | x64` for 64-bit Notepad++
 - `Release | x86` for 32-bit Notepad++

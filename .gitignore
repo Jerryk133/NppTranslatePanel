@@ -42,6 +42,7 @@ x64/
 *.vssscc
 .builds
 .build-stage/
+artifacts/
 
 
 # Visual Studio profiler
