@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>NppTranslatePanel.Tests</AssemblyName>
+    <RootNamespace>NppTranslatePanel.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NppTranslatePanel\NppTranslatePanel.csproj" />
+  </ItemGroup>
+</Project>
