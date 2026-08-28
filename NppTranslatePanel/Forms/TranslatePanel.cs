@@ -42,7 +42,10 @@ namespace NppTranslatePanel.Forms
             };
         }
 
-        /// <summary>Matches the translation output font to Scintilla's default editor style.</summary>
+        /// <summary>
+        /// Matches the translation output font to Scintilla's default editor style,
+        /// including the editor zoom that affects the displayed font size.
+        /// </summary>
         public void ApplyEditorFont()
         {
             if (Npp.editor == null || txtOutput == null || txtOutput.IsDisposed)
@@ -56,6 +59,7 @@ namespace NppTranslatePanel.Forms
                 float size = fractionalSize > 0
                     ? fractionalSize / 100f
                     : Npp.editor.StyleGetSize(style);
+                size += Npp.editor.GetZoom();
                 if (string.IsNullOrWhiteSpace(family) || size <= 0)
                     return;
 
@@ -64,8 +68,30 @@ namespace NppTranslatePanel.Forms
                     fontStyle |= FontStyle.Bold;
                 if (Npp.editor.StyleGetItalic(style))
                     fontStyle |= FontStyle.Italic;
+                if (Npp.editor.StyleGetUnderline(style))
+                    fontStyle |= FontStyle.Underline;
 
-                var newFont = new Font(family, size, fontStyle, GraphicsUnit.Point);
+                int scintillaCharacterSet = (int)Npp.editor.StyleGetCharacterSet(style);
+                byte gdiCharacterSet = scintillaCharacterSet >= byte.MinValue
+                    && scintillaCharacterSet <= byte.MaxValue
+                    ? (byte)scintillaCharacterSet
+                    : (byte)1; // DEFAULT_CHARSET for Scintilla-only charset identifiers.
+
+                if (editorFont != null
+                    && string.Equals(editorFont.FontFamily.Name, family,
+                        StringComparison.OrdinalIgnoreCase)
+                    && Math.Abs(editorFont.SizeInPoints - size) < 0.01f
+                    && editorFont.Style == fontStyle
+                    && editorFont.GdiCharSet == gdiCharacterSet)
+                {
+                    panelLineHeight = Math.Max(1,
+                        (int)Math.Ceiling(editorFont.GetHeight()));
+                    txtOutput.Font = editorFont;
+                    return;
+                }
+
+                var newFont = new Font(family, size, fontStyle, GraphicsUnit.Point,
+                    gdiCharacterSet);
                 editorFont = newFont;
                 panelLineHeight = Math.Max(1, (int)Math.Ceiling(newFont.GetHeight()));
                 txtOutput.Font = newFont;

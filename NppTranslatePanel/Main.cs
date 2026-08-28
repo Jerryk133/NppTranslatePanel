@@ -186,10 +186,12 @@ namespace Kbg.NppPluginNET
                 watcher.TranslationFailed += translatePanel.ShowError;
                 watcher.TranslationStarted += translatePanel.ShowTranslating;
                 watcher.TranslationCompleted += translatePanel.ShowCompleted;
+                translatePanel.ApplyEditorFont();
                 DisplayTranslatePanel(translatePanel);
             }
             else
             {
+                translatePanel.ApplyEditorFont();
                 Npp.notepad.ShowDockingForm(translatePanel);
             }
             watcher.Enabled = true;
