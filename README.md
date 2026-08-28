@@ -17,6 +17,7 @@ The plugin supports [DeepL API](https://developers.deepl.com/docs) and the free 
 - Translation status with provider, character count, API requests, cache hits, and elapsed time
 - Privacy-safe local diagnostics that never log document text or API keys
 - Optional use of the current Notepad++ editor colors
+- Optional matching of the active document's syntax highlighting and editor layout, including Markdown formatting
 - Support for both 32-bit and 64-bit Notepad++
 
 ## Requirements
@@ -67,6 +68,7 @@ Switching to another Notepad++ tab triggers translation of the newly active docu
 | `auto_translate_on_edit` | `true` | Starts translation automatically after typing stops. |
 | `translate_on_tab_change` | `true` | Translates immediately after switching document tabs. |
 | `synchronize_scrolling` | `true` | Synchronizes vertical scrolling proportionally between the editor and translation panel. |
+| `match_source_syntax_highlighting` | `true` | Uses the active language definition and mirrors its syntax colors, font styles, zoom, tabs, indentation, and wrapping. |
 | `use_npp_styling` | `true` | Uses Notepad++ editor colors for the plugin UI. |
 
 Language values are MyMemory language codes such as `en`, `cs`, `de`, or `fr`. Availability depends on the language pairs supported by MyMemory.
@@ -120,17 +122,20 @@ The main components are:
 - `Translation/MyMemoryTranslator.cs` — MyMemory HTTP client and response parsing
 - `Translation/TranslationCache.cs` — bounded in-memory paragraph cache
 - `Translation/Segmenter.cs` — paragraph splitting
-- `Forms/TranslatePanel.cs` — dockable translation output
+- `Forms/TranslatePanel.cs` — dockable Scintilla translation output
+- `Utils/ContainerSyntaxHighlighter.cs` — safe syntax highlighting from Notepad++ language definitions
+- `Utils/MarkdownSyntaxHighlighter.cs` — Markdown-aware highlighting that uses Notepad++ UDL styles
+- `Utils/ScintillaStyleSynchronizer.cs` — active style and editor-layout mirroring
 - `Utils/Settings.cs` — user-configurable settings
 - `Utils/DiagnosticsLogger.cs` — privacy-safe translation performance and error log
 - `PluginInfrastructure/` — Notepad++ and Scintilla interop inherited from NppCSharpPluginPack
 
 ## Current limitations
 
-- MyMemory is the only translation backend currently included.
 - Translation requires an internet connection.
 - Formatting and the exact number of blank lines are not preserved in the translated preview.
-- The panel displays translated plain text and does not write it back into the document.
+- Syntax highlighting is visual only; machine translation may still change programming-language tokens.
+- The panel does not write translated text back into the document.
 - The translation cache exists only for the current Notepad++ session and is cleared when translation settings change.
 
 ## Diagnostics and tests

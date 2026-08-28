@@ -61,6 +61,10 @@ namespace NppTranslatePanel.Utils
         [Description("Synchronize vertical scrolling between the editor and the translation panel."),
             Category("Behavior"), DefaultValue(true)]
         public bool synchronize_scrolling { get; set; }
+
+        [Description("Use the active document's language definition, colors and text styles in the translation panel."),
+            Category("Behavior"), DefaultValue(true)]
+        public bool match_source_syntax_highlighting { get; set; }
         #endregion
 
         #region STYLING

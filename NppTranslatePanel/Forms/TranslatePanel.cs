@@ -1,5 +1,4 @@
 using System;
-using System.Drawing;
 using System.Windows.Forms;
 using Kbg.NppPluginNET;
 using Kbg.NppPluginNET.PluginInfrastructure;
@@ -14,15 +13,10 @@ namespace NppTranslatePanel.Forms
     /// </summary>
     public partial class TranslatePanel : FormBase
     {
-        private const uint EmGetFirstVisibleLine = 0x00CE;
-        private const uint EmGetLineCount = 0x00BA;
-        private const uint EmLineScroll = 0x00B6;
-
-        private Font editorFont;
-        private int panelLineHeight = 16;
         private readonly Timer scrollPollTimer;
         private int lastPanelFirstLine;
         private bool synchronizingScroll;
+        private string translatedText = string.Empty;
 
         public TranslatePanel() : base(isModal: false, isDocking: true)
         {
@@ -43,8 +37,8 @@ namespace NppTranslatePanel.Forms
         }
 
         /// <summary>
-        /// Matches the translation output font to Scintilla's default editor style,
-        /// including the editor zoom that affects the displayed font size.
+        /// Matches the translation output to the active editor's font and, when enabled,
+        /// its lexer, syntax colors, keyword sets and layout settings.
         /// </summary>
         public void ApplyEditorFont()
         {
@@ -53,63 +47,23 @@ namespace NppTranslatePanel.Forms
 
             try
             {
-                int style = (int)SciMsg.STYLE_DEFAULT;
-                string family = Npp.editor.StyleGetFont(style);
-                int fractionalSize = Npp.editor.StyleGetSizeFractional(style);
-                float size = fractionalSize > 0
-                    ? fractionalSize / 100f
-                    : Npp.editor.StyleGetSize(style);
-                size += Npp.editor.GetZoom();
-                if (string.IsNullOrWhiteSpace(family) || size <= 0)
-                    return;
-
-                FontStyle fontStyle = FontStyle.Regular;
-                if (Npp.editor.StyleGetBold(style))
-                    fontStyle |= FontStyle.Bold;
-                if (Npp.editor.StyleGetItalic(style))
-                    fontStyle |= FontStyle.Italic;
-                if (Npp.editor.StyleGetUnderline(style))
-                    fontStyle |= FontStyle.Underline;
-
-                int scintillaCharacterSet = (int)Npp.editor.StyleGetCharacterSet(style);
-                byte gdiCharacterSet = scintillaCharacterSet >= byte.MinValue
-                    && scintillaCharacterSet <= byte.MaxValue
-                    ? (byte)scintillaCharacterSet
-                    : (byte)1; // DEFAULT_CHARSET for Scintilla-only charset identifiers.
-
-                if (editorFont != null
-                    && string.Equals(editorFont.FontFamily.Name, family,
-                        StringComparison.OrdinalIgnoreCase)
-                    && Math.Abs(editorFont.SizeInPoints - size) < 0.01f
-                    && editorFont.Style == fontStyle
-                    && editorFont.GdiCharSet == gdiCharacterSet)
-                {
-                    panelLineHeight = Math.Max(1,
-                        (int)Math.Ceiling(editorFont.GetHeight()));
-                    txtOutput.Font = editorFont;
-                    return;
-                }
-
-                var newFont = new Font(family, size, fontStyle, GraphicsUnit.Point,
-                    gdiCharacterSet);
-                editorFont = newFont;
-                panelLineHeight = Math.Max(1, (int)Math.Ceiling(newFont.GetHeight()));
-                txtOutput.Font = newFont;
-                // Do not dispose the previous Font here. WinForms may still retain it internally
-                // while processing layout and paint messages, which makes Font.Height throw.
+                ScintillaStyleSynchronizer.Apply(Npp.editor, txtOutput.Gateway,
+                    Main.settings.match_source_syntax_highlighting);
+                ContainerSyntaxHighlighter.Apply(txtOutput.Gateway, translatedText,
+                    Main.settings.match_source_syntax_highlighting);
             }
-            catch (ArgumentException)
+            catch (InvalidOperationException)
             {
-                // Keep the current UI font if the configured editor font is unavailable.
+                // Keep the panel usable if the native Scintilla control is temporarily unavailable.
             }
         }
 
         public void SetTranslatedText(string text)
         {
-            int caretPos = Math.Min(txtOutput.SelectionStart, text.Length);
-            txtOutput.Text = text;
-            txtOutput.SelectionStart = caretPos;
-            txtOutput.ScrollToCaret();
+            translatedText = text ?? string.Empty;
+            txtOutput.SetContent(translatedText);
+            ContainerSyntaxHighlighter.Apply(txtOutput.Gateway, translatedText,
+                Main.settings.match_source_syntax_highlighting);
             lblStatus.Text = "Updated " + DateTime.Now.ToString("HH:mm:ss");
             SyncFromEditor();
         }
@@ -217,8 +171,7 @@ namespace NppTranslatePanel.Forms
             synchronizingScroll = true;
             try
             {
-                Win32.SendMessage(txtOutput.Handle, EmLineScroll, IntPtr.Zero,
-                    new IntPtr(targetLine - currentLine));
+                txtOutput.Gateway.SetFirstVisibleLine(targetLine);
                 lastPanelFirstLine = GetPanelFirstVisibleLine();
             }
             finally
@@ -229,19 +182,17 @@ namespace NppTranslatePanel.Forms
 
         private int GetPanelFirstVisibleLine()
         {
-            return (int)Win32.SendMessage(txtOutput.Handle, EmGetFirstVisibleLine,
-                IntPtr.Zero, IntPtr.Zero);
+            return txtOutput.Gateway.GetFirstVisibleLine();
         }
 
         private int GetPanelLineCount()
         {
-            return Math.Max(1, (int)Win32.SendMessage(txtOutput.Handle, EmGetLineCount,
-                IntPtr.Zero, IntPtr.Zero));
+            return Math.Max(1, txtOutput.Gateway.GetLineCount());
         }
 
         private int GetPanelVisibleLineCount()
         {
-            return Math.Max(1, txtOutput.ClientSize.Height / Math.Max(1, panelLineHeight));
+            return Math.Max(1, txtOutput.Gateway.LinesOnScreen());
         }
     }
 }

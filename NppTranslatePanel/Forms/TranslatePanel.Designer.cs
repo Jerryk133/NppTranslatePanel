@@ -16,12 +16,12 @@ namespace NppTranslatePanel.Forms
         #region Windows Form Designer generated code
 
         private System.Windows.Forms.Label lblStatus;
-        private System.Windows.Forms.TextBox txtOutput;
+        private ScintillaOutput txtOutput;
 
         private void InitializeComponent()
         {
             this.lblStatus = new System.Windows.Forms.Label();
-            this.txtOutput = new System.Windows.Forms.TextBox();
+            this.txtOutput = new ScintillaOutput();
             this.SuspendLayout();
             //
             // lblStatus
@@ -36,10 +36,6 @@ namespace NppTranslatePanel.Forms
             // txtOutput
             //
             this.txtOutput.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtOutput.Multiline = true;
-            this.txtOutput.ReadOnly = true;
-            this.txtOutput.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtOutput.WordWrap = true;
             this.txtOutput.Name = "txtOutput";
             this.txtOutput.TabStop = false;
             //

@@ -93,6 +93,7 @@
       <DependentUpon>FormBase.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\NppFormHelper.cs" />
+    <Compile Include="Forms\ScintillaOutput.cs" />
     <Compile Include="Forms\SettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -130,6 +131,9 @@
     <Compile Include="Utils\NppListener.cs" />
     <Compile Include="Utils\Settings.cs" />
     <Compile Include="Utils\SecretProtector.cs" />
+    <Compile Include="Utils\ContainerSyntaxHighlighter.cs" />
+    <Compile Include="Utils\MarkdownSyntaxHighlighter.cs" />
+    <Compile Include="Utils\ScintillaStyleSynchronizer.cs" />
     <Compile Include="Utils\DiagnosticsLogger.cs" />
     <Compile Include="Utils\Translator.cs" />
     <!-- JSON parsing (used by Translator for UI language files, and by MyMemoryTranslator for API responses) -->

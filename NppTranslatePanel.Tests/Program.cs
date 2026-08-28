@@ -20,6 +20,8 @@ namespace NppTranslatePanel.Tests
                 Run("Cache remains bounded", CacheRemainsBounded);
                 Run("Chunking respects maximum length", ChunkingRespectsMaximumLength);
                 Run("DPAPI secret round-trip", SecretRoundTrip);
+                Run("Markdown headings and links are highlighted", MarkdownHeadingsAndLinksAreHighlighted);
+                Run("Markdown code and emphasis are highlighted", MarkdownCodeAndEmphasisAreHighlighted);
                 Console.WriteLine("All {0} tests passed.", passed);
                 return 0;
             }
@@ -79,6 +81,45 @@ namespace NppTranslatePanel.Tests
             string encrypted = SecretProtector.Protect(secret);
             Assert(encrypted != secret && encrypted.StartsWith("dpapi:"), "Secret was not protected.");
             Assert(SecretProtector.Unprotect(encrypted) == secret, "Protected secret could not be restored.");
+        }
+
+        private static void MarkdownHeadingsAndLinksAreHighlighted()
+        {
+            const string text = "# Heading\n[OpenAI](https://openai.com)";
+            int[] styles = new int[text.Length];
+            MarkdownSyntaxHighlighter.Highlight(text, styles);
+
+            Assert(styles[0] == MarkdownSyntaxHighlighter.HeadingStyle,
+                "Markdown heading marker was not highlighted.");
+            Assert(styles[text.IndexOf("Heading", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.HeadingStyle,
+                "Markdown heading text was not highlighted.");
+            Assert(styles[text.IndexOf("OpenAI", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.LinkTextStyle,
+                "Markdown link text was not highlighted.");
+            Assert(styles[text.IndexOf("https", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.LinkDestinationStyle,
+                "Markdown link destination was not highlighted.");
+        }
+
+        private static void MarkdownCodeAndEmphasisAreHighlighted()
+        {
+            const string text = "Use `code`, **strong** and *emphasis*.\n```cs\n# code\n```";
+            int[] styles = new int[text.Length];
+            MarkdownSyntaxHighlighter.Highlight(text, styles);
+
+            Assert(styles[text.IndexOf("code", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.CodeStyle,
+                "Markdown inline code was not highlighted.");
+            Assert(styles[text.IndexOf("strong", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.StrongStyle,
+                "Markdown strong text was not highlighted.");
+            Assert(styles[text.IndexOf("emphasis", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.EmphasisStyle,
+                "Markdown emphasis was not highlighted.");
+            Assert(styles[text.LastIndexOf("# code", StringComparison.Ordinal)]
+                == MarkdownSyntaxHighlighter.CodeStyle,
+                "Markdown fenced code block was not highlighted as code.");
         }
 
         private static void Assert(bool condition, string message)

@@ -21,6 +21,7 @@ namespace NppTranslatePanel.Forms
         private readonly CheckBox autoTranslate;
         private readonly CheckBox translateOnTabChange;
         private readonly CheckBox synchronizeScrolling;
+        private readonly CheckBox matchSourceSyntaxHighlighting;
         private readonly CheckBox useNppStyling;
 
         public SettingsForm(Settings settings)
@@ -126,6 +127,8 @@ namespace NppTranslatePanel.Forms
                 "Translate immediately when switching document tabs", settings.translate_on_tab_change);
             synchronizeScrolling = AddCheckBox(behaviorLayout,
                 "Synchronize scrolling between editor and translation", settings.synchronize_scrolling);
+            matchSourceSyntaxHighlighting = AddCheckBox(behaviorLayout,
+                "Match source syntax highlighting", settings.match_source_syntax_highlighting);
             AddWideRow(behaviorLayout, new Label
             {
                 Text = "Translation is paused while the Translate panel is hidden to avoid unnecessary API usage.",
@@ -270,6 +273,7 @@ namespace NppTranslatePanel.Forms
             settings.auto_translate_on_edit = autoTranslate.Checked;
             settings.translate_on_tab_change = translateOnTabChange.Checked;
             settings.synchronize_scrolling = synchronizeScrolling.Checked;
+            settings.match_source_syntax_highlighting = matchSourceSyntaxHighlighting.Checked;
             settings.use_npp_styling = useNppStyling.Checked;
             settings.OnSettingsChanged();
             DialogResult = DialogResult.OK;
@@ -288,6 +292,7 @@ namespace NppTranslatePanel.Forms
             autoTranslate.Checked = true;
             translateOnTabChange.Checked = true;
             synchronizeScrolling.Checked = true;
+            matchSourceSyntaxHighlighting.Checked = true;
             useNppStyling.Checked = true;
         }
 
