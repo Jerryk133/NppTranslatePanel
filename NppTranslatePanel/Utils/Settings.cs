@@ -51,11 +51,11 @@ namespace NppTranslatePanel.Utils
 
         #region BEHAVIOR
         [Description("Automatically translate after the document text changes."),
-            Category("Behavior"), DefaultValue(true)]
+            Category("Behavior"), DefaultValue(false)]
         public bool auto_translate_on_edit { get; set; }
 
         [Description("Translate immediately after switching to another document tab."),
-            Category("Behavior"), DefaultValue(true)]
+            Category("Behavior"), DefaultValue(false)]
         public bool translate_on_tab_change { get; set; }
 
         [Description("Synchronize vertical scrolling between the editor and the translation panel."),
@@ -65,6 +65,12 @@ namespace NppTranslatePanel.Utils
         [Description("Use the active document's language definition, colors and text styles in the translation panel."),
             Category("Behavior"), DefaultValue(true)]
         public bool match_source_syntax_highlighting { get; set; }
+        #endregion
+
+        #region PRIVACY
+        [Description("Translation provider for which the user confirmed that requested text may be sent over the internet."),
+            Category("Privacy"), DefaultValue("")]
+        public string privacy_notice_accepted_provider { get; set; }
         #endregion
 
         #region STYLING

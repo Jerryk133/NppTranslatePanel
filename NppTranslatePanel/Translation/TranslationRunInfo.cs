@@ -10,5 +10,6 @@ namespace NppTranslatePanel.Translation
         public int ApiRequests { get; internal set; }
         public int CacheHits { get; internal set; }
         public TimeSpan Duration { get; internal set; }
+        public bool SelectionOnly { get; internal set; }
     }
 }

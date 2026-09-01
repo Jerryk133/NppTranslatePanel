@@ -26,6 +26,7 @@ namespace NppTranslatePanel.Translation
         public string SourceLang { get; set; } = "en";
         public string TargetLang { get; set; } = "cs";
         public int DebounceMs { get; set; } = 1000;
+        internal bool DiagnosticsEnabled { get; set; } = true;
 
         /// <summary>only translate while the panel is visible; avoids wasted API calls otherwise</summary>
         public bool Enabled { get; set; } = false;
@@ -49,7 +50,7 @@ namespace NppTranslatePanel.Translation
             debounceTimer.Tick += (s, e) =>
             {
                 debounceTimer.Stop();
-                _ = RunTranslationAsync();
+                _ = RunTranslationAsync(null, false);
             };
         }
 
@@ -64,18 +65,27 @@ namespace NppTranslatePanel.Translation
         }
 
         /// <summary>call when the active buffer/tab changed, or the panel just became visible: translate right away</summary>
-        public void TranslateNow()
+        public void TranslateDocumentNow()
         {
             if (!Enabled)
                 return;
             debounceTimer.Stop();
-            _ = RunTranslationAsync();
+            _ = RunTranslationAsync(null, false);
+        }
+
+        /// <summary>translate caller-supplied text instead of reading the complete active document</summary>
+        public Task TranslateTextNow(string text, bool selectionOnly)
+        {
+            if (!Enabled)
+                return Task.CompletedTask;
+            debounceTimer.Stop();
+            return RunTranslationAsync(text ?? string.Empty, selectionOnly);
         }
 
         /// <summary>forget everything we've cached; call after changing the language pair or translator</summary>
         public void ResetCache() => cache.Clear();
 
-        private async Task RunTranslationAsync()
+        private async Task RunTranslationAsync(string requestedText, bool selectionOnly)
         {
             if (Translator == null)
                 return;
@@ -84,8 +94,10 @@ namespace NppTranslatePanel.Translation
             var cts = new CancellationTokenSource();
             currentCts = cts;
 
-            if (!Npp.TryGetText(out string fullText, showMessageOnFail: false))
-                return;
+            string fullText = requestedText;
+            if (fullText == null
+                && !Npp.TryGetText(out fullText, showMessageOnFail: false))
+                    return;
 
             List<string> paragraphs = Segmenter.SplitParagraphs(fullText);
             var translated = new string[paragraphs.Count];
@@ -95,7 +107,8 @@ namespace NppTranslatePanel.Translation
             {
                 Provider = Translator.Name,
                 CharacterCount = fullText.Length,
-                ParagraphCount = paragraphs.Count
+                ParagraphCount = paragraphs.Count,
+                SelectionOnly = selectionOnly
             };
             var stopwatch = Stopwatch.StartNew();
             TranslationStarted?.Invoke(runInfo);
@@ -121,7 +134,8 @@ namespace NppTranslatePanel.Translation
                 catch (Exception ex)
                 {
                     runInfo.Duration = stopwatch.Elapsed;
-                    DiagnosticsLogger.Failed(runInfo, ex.Message);
+                    if (DiagnosticsEnabled)
+                        DiagnosticsLogger.Failed(runInfo, ex.Message);
                     TranslationFailed?.Invoke(ex.Message);
                 }
                 return;
@@ -146,7 +160,8 @@ namespace NppTranslatePanel.Translation
                     // instead of sending one doomed request for every remaining paragraph.
                     TranslationFailed?.Invoke(ex.Message);
                     runInfo.Duration = stopwatch.Elapsed;
-                    DiagnosticsLogger.Failed(runInfo, ex.Message);
+                    if (DiagnosticsEnabled)
+                        DiagnosticsLogger.Failed(runInfo, ex.Message);
                     return;
                 }
                 catch (Exception ex)
@@ -166,7 +181,8 @@ namespace NppTranslatePanel.Translation
             {
                 TranslationFailed?.Invoke(lastFailureMessage);
                 runInfo.Duration = stopwatch.Elapsed;
-                DiagnosticsLogger.Failed(runInfo, lastFailureMessage);
+                if (DiagnosticsEnabled)
+                    DiagnosticsLogger.Failed(runInfo, lastFailureMessage);
             }
             else
             {
@@ -177,7 +193,8 @@ namespace NppTranslatePanel.Translation
         private void CompleteRun(TranslationRunInfo runInfo, Stopwatch stopwatch)
         {
             runInfo.Duration = stopwatch.Elapsed;
-            DiagnosticsLogger.Completed(runInfo);
+            if (DiagnosticsEnabled)
+                DiagnosticsLogger.Completed(runInfo);
             TranslationCompleted?.Invoke(runInfo);
         }
 

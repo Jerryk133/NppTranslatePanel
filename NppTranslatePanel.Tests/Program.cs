@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using NppTranslatePanel.Translation;
 using NppTranslatePanel.Utils;
 
@@ -18,10 +21,14 @@ namespace NppTranslatePanel.Tests
                 Run("Segmenter splits paragraphs", SegmenterSplitsParagraphs);
                 Run("Cache separates language pairs", CacheSeparatesLanguagePairs);
                 Run("Cache remains bounded", CacheRemainsBounded);
+                Run("Cache can be cleared explicitly", CacheCanBeClearedExplicitly);
                 Run("Chunking respects maximum length", ChunkingRespectsMaximumLength);
                 Run("DPAPI secret round-trip", SecretRoundTrip);
                 Run("Markdown headings and links are highlighted", MarkdownHeadingsAndLinksAreHighlighted);
                 Run("Markdown code and emphasis are highlighted", MarkdownCodeAndEmphasisAreHighlighted);
+                Run("Automatic translation defaults are privacy-safe", AutomaticTranslationDefaultsArePrivacySafe);
+                Run("Privacy consent is provider-specific", PrivacyConsentIsProviderSpecific);
+                Run("Selection translation uses only supplied text", SelectionTranslationUsesOnlySuppliedText);
                 Console.WriteLine("All {0} tests passed.", passed);
                 return 0;
             }
@@ -65,6 +72,17 @@ namespace NppTranslatePanel.Tests
                 cache.Set("en", "cs", "source-" + i, "target-" + i);
             Assert(!cache.TryGet("en", "cs", "source-0", out _), "Old cache entries were not evicted.");
             Assert(cache.TryGet("en", "cs", "source-5000", out _), "Newest cache entry was lost.");
+        }
+
+        private static void CacheCanBeClearedExplicitly()
+        {
+            var cache = new TranslationCache();
+            cache.Set("en", "cs", "hello", "ahoj");
+
+            cache.Clear();
+
+            Assert(!cache.TryGet("en", "cs", "hello", out _),
+                "An explicitly cleared cache still contained a translation.");
         }
 
         private static void ChunkingRespectsMaximumLength()
@@ -120,6 +138,68 @@ namespace NppTranslatePanel.Tests
             Assert(styles[text.LastIndexOf("# code", StringComparison.Ordinal)]
                 == MarkdownSyntaxHighlighter.CodeStyle,
                 "Markdown fenced code block was not highlighted as code.");
+        }
+
+        private static void AutomaticTranslationDefaultsArePrivacySafe()
+        {
+            Assert(GetDefaultValue(nameof(Settings.auto_translate_on_edit)) is bool editValue
+                && !editValue, "Automatic translation after editing is enabled by default.");
+            Assert(GetDefaultValue(nameof(Settings.translate_on_tab_change)) is bool tabValue
+                && !tabValue, "Automatic translation after changing tabs is enabled by default.");
+            Assert(string.Equals(GetDefaultValue(nameof(Settings.privacy_notice_accepted_provider)) as string,
+                string.Empty, StringComparison.Ordinal),
+                "A translation provider has privacy consent by default.");
+        }
+
+        private static object GetDefaultValue(string propertyName)
+        {
+            var property = typeof(Settings).GetProperty(propertyName);
+            return ((DefaultValueAttribute)Attribute.GetCustomAttribute(
+                property, typeof(DefaultValueAttribute)))?.Value;
+        }
+
+        private static void PrivacyConsentIsProviderSpecific()
+        {
+            Assert(!PrivacyConsent.IsAccepted("MyMemory", string.Empty),
+                "Empty privacy consent was accepted.");
+            Assert(PrivacyConsent.IsAccepted("DeepL", "deepl"),
+                "Matching provider privacy consent was rejected.");
+            Assert(!PrivacyConsent.IsAccepted("MyMemory", "DeepL"),
+                "Privacy consent leaked between translation providers.");
+            Assert(!PrivacyConsent.IsAccepted(string.Empty, string.Empty),
+                "Missing provider and consent were treated as accepted.");
+        }
+
+        private static void SelectionTranslationUsesOnlySuppliedText()
+        {
+            var watcher = new ChangeWatcher
+            {
+                Enabled = true,
+                DiagnosticsEnabled = false,
+                Translator = new EchoTranslator()
+            };
+            string translated = null;
+            TranslationRunInfo started = null;
+            watcher.TranslationReady += value => translated = value;
+            watcher.TranslationStarted += info => started = info;
+
+            watcher.TranslateTextNow("selected text", true).GetAwaiter().GetResult();
+
+            Assert(translated == "translated:selected text",
+                "Selection translation did not use the supplied text.");
+            Assert(started != null && started.SelectionOnly && started.CharacterCount == 13,
+                "Selection translation scope was not reported correctly.");
+        }
+
+        private sealed class EchoTranslator : ITranslator
+        {
+            public string Name => "Echo";
+
+            public Task<string> TranslateAsync(string text, string sourceLang,
+                string targetLang, CancellationToken cancellationToken)
+            {
+                return Task.FromResult("translated:" + text);
+            }
         }
 
         private static void Assert(bool condition, string message)

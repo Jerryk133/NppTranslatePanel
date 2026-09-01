@@ -27,7 +27,9 @@ namespace Kbg.NppPluginNET
         };
 
         static internal int IdTranslatePanel = -1;
-        static internal int IdTranslateNow = -1;
+        static internal int IdTranslateDocument = -1;
+        static internal int IdTranslateSelection = -1;
+        private static bool privacyConfirmationVisible;
         #endregion
 
         #region " Startup/CleanUp "
@@ -44,12 +46,14 @@ namespace Kbg.NppPluginNET
 
             PluginBase.SetCommand(0, Translator.GetTranslatedMenuItem("&Show Translate Panel"), ToggleTranslatePanel);
             IdTranslatePanel = 0;
-            PluginBase.SetCommand(1, Translator.GetTranslatedMenuItem("&Translate Now"), TranslateNow);
-            IdTranslateNow = 1;
-            PluginBase.SetCommand(2, Translator.GetTranslatedMenuItem("---"), null);
-            PluginBase.SetCommand(3, Translator.GetTranslatedMenuItem("&Settings"), OpenSettings);
-            PluginBase.SetCommand(4, Translator.GetTranslatedMenuItem("---"), null);
-            PluginBase.SetCommand(5, Translator.GetTranslatedMenuItem("&About"), ShowAbout);
+            PluginBase.SetCommand(1, Translator.GetTranslatedMenuItem("Translate &Document"), TranslateDocument);
+            IdTranslateDocument = 1;
+            PluginBase.SetCommand(2, Translator.GetTranslatedMenuItem("Translate &Selection"), TranslateSelection);
+            IdTranslateSelection = 2;
+            PluginBase.SetCommand(3, Translator.GetTranslatedMenuItem("---"), null);
+            PluginBase.SetCommand(4, Translator.GetTranslatedMenuItem("&Settings"), OpenSettings);
+            PluginBase.SetCommand(5, Translator.GetTranslatedMenuItem("---"), null);
+            PluginBase.SetCommand(6, Translator.GetTranslatedMenuItem("&About"), ShowAbout);
         }
 
         private static Assembly LoadDependency(object sender, ResolveEventArgs args)
@@ -94,15 +98,20 @@ namespace Kbg.NppPluginNET
                 Npp.editor = new ScintillaGateway(PluginBase.GetCurrentScintilla());
                 if (translatePanel != null && !translatePanel.IsDisposed)
                     translatePanel.ApplyEditorFont();
-                if (settings.translate_on_tab_change)
-                    watcher.TranslateNow();
+                if (settings.translate_on_tab_change && watcher.Enabled && EnsurePrivacyConsent())
+                    TranslateCurrentDocument();
                 return;
             case (uint)SciMsg.SCN_MODIFIED:
                 // Ignore styling, folding and marker notifications. Only actual text edits
                 // should restart the debounce timer and potentially consume API quota.
                 int textChangeMask = (int)SciMsg.SC_MOD_INSERTTEXT | (int)SciMsg.SC_MOD_DELETETEXT;
-                if (settings.auto_translate_on_edit && (notification.ModificationType & textChangeMask) != 0)
+                if (settings.auto_translate_on_edit && watcher.Enabled
+                    && (notification.ModificationType & textChangeMask) != 0
+                    && EnsurePrivacyConsent())
+                {
+                    SetSelectionOnly(false);
                     watcher.NotifyTextChanged();
+                }
                 break;
             case (uint)SciMsg.SCN_UPDATEUI:
                 if (settings.synchronize_scrolling
@@ -136,7 +145,7 @@ namespace Kbg.NppPluginNET
 
         static void OpenSettings()
         {
-            using (var form = new SettingsForm(settings))
+            using (var form = new SettingsForm(settings, watcher.ResetCache))
                 form.ShowDialog();
         }
 
@@ -162,12 +171,34 @@ namespace Kbg.NppPluginNET
             }
         }
 
-        static void TranslateNow()
+        static void TranslateDocument()
         {
             if (translatePanel == null || translatePanel.IsDisposed || !translatePanel.Visible)
-                ToggleTranslatePanel();
-            else
-                watcher.TranslateNow();
+                ShowTranslatePanel();
+            if (EnsurePrivacyConsent())
+                TranslateCurrentDocument();
+        }
+
+        static void TranslateSelection()
+        {
+            if (Npp.editor == null || Npp.editor.GetSelectionLength() <= 0)
+            {
+                MessageBox.Show("Select the text to translate, then run Translate Selection again.",
+                    "No text selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string selectedText = Npp.editor.GetSelText();
+            if (string.IsNullOrEmpty(selectedText))
+                return;
+
+            if (translatePanel == null || translatePanel.IsDisposed || !translatePanel.Visible)
+                ShowTranslatePanel();
+            if (!EnsurePrivacyConsent())
+                return;
+
+            SetSelectionOnly(true);
+            _ = watcher.TranslateTextNow(selectedText, true);
         }
 
         static void ToggleTranslatePanel()
@@ -179,6 +210,77 @@ namespace Kbg.NppPluginNET
                 watcher.Enabled = false;
                 return;
             }
+
+            ShowTranslatePanel();
+            if (settings.auto_translate_on_edit || settings.translate_on_tab_change)
+            {
+                if (EnsurePrivacyConsent())
+                    TranslateCurrentDocument();
+            }
+            else
+                translatePanel.SetStatus("Ready. Use Translate Document to translate this document.");
+        }
+
+        private static bool EnsurePrivacyConsent()
+        {
+            string provider = PrivacyConsent.NormalizeProvider(settings.translator_provider);
+            if (PrivacyConsent.IsAccepted(provider, settings.privacy_notice_accepted_provider))
+                return true;
+
+            if (privacyConfirmationVisible)
+                return false;
+
+            privacyConfirmationVisible = true;
+            try
+            {
+                string displayProvider = string.IsNullOrWhiteSpace(provider)
+                    ? "the selected translation provider"
+                    : provider;
+                string message =
+                    "NppTranslatePanel will send the text requested for translation to " +
+                    displayProvider + " over the internet. " +
+                    "The service processes the submitted text according to its own privacy policy.\r\n\r\n" +
+                    "Do not continue with confidential or sensitive content unless sending it to this " +
+                    "third-party service is acceptable and permitted.\r\n\r\n" +
+                    "Continue and remember this choice for " + displayProvider + "?";
+                DialogResult result = MessageBox.Show(message, "Privacy confirmation",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+
+                if (result == DialogResult.Yes)
+                {
+                    settings.privacy_notice_accepted_provider = provider;
+                    settings.SaveToIniFile();
+                    return true;
+                }
+
+                settings.auto_translate_on_edit = false;
+                settings.translate_on_tab_change = false;
+                settings.SaveToIniFile();
+                if (translatePanel != null && !translatePanel.IsDisposed)
+                    translatePanel.SetStatus("Translation cancelled. No document text was sent.");
+                return false;
+            }
+            finally
+            {
+                privacyConfirmationVisible = false;
+            }
+        }
+
+        private static void TranslateCurrentDocument()
+        {
+            SetSelectionOnly(false);
+            watcher.TranslateDocumentNow();
+        }
+
+        private static void SetSelectionOnly(bool value)
+        {
+            if (translatePanel != null && !translatePanel.IsDisposed)
+                translatePanel.SetSelectionOnly(value);
+        }
+
+        private static void ShowTranslatePanel()
+        {
             if (translatePanel == null || translatePanel.IsDisposed)
             {
                 translatePanel = new TranslatePanel();
@@ -195,7 +297,6 @@ namespace Kbg.NppPluginNET
                 Npp.notepad.ShowDockingForm(translatePanel);
             }
             watcher.Enabled = true;
-            watcher.TranslateNow();
         }
 
         private static void DisplayTranslatePanel(TranslatePanel form)

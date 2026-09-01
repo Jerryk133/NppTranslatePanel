@@ -10,6 +10,7 @@ namespace NppTranslatePanel.Forms
     public sealed class SettingsForm : Form
     {
         private readonly Settings settings;
+        private readonly Action clearTranslationCache;
         private readonly RadioButton myMemoryProvider;
         private readonly RadioButton deepLProvider;
         private readonly TextBox sourceLanguage;
@@ -23,10 +24,13 @@ namespace NppTranslatePanel.Forms
         private readonly CheckBox synchronizeScrolling;
         private readonly CheckBox matchSourceSyntaxHighlighting;
         private readonly CheckBox useNppStyling;
+        private bool resetPrivacyConsent;
 
-        public SettingsForm(Settings settings)
+        public SettingsForm(Settings settings, Action clearTranslationCache)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            this.clearTranslationCache = clearTranslationCache
+                ?? throw new ArgumentNullException(nameof(clearTranslationCache));
 
             Text = "NppTranslatePanel Settings";
             Name = "SettingsForm";
@@ -39,8 +43,18 @@ namespace NppTranslatePanel.Forms
             Padding = new Padding(12);
 
             var tabs = new TabControl { Dock = DockStyle.Fill, Name = "SettingsTabs" };
-            var translatorTab = new TabPage("Translator") { Name = "TranslatorTab", Padding = new Padding(14) };
-            var behaviorTab = new TabPage("Application Behavior") { Name = "BehaviorTab", Padding = new Padding(14) };
+            var translatorTab = new TabPage("Translator")
+            {
+                Name = "TranslatorTab",
+                Padding = new Padding(14),
+                AutoScroll = true
+            };
+            var behaviorTab = new TabPage("Application Behavior")
+            {
+                Name = "BehaviorTab",
+                Padding = new Padding(14),
+                AutoScroll = true
+            };
             tabs.TabPages.Add(translatorTab);
             tabs.TabPages.Add(behaviorTab);
 
@@ -77,6 +91,23 @@ namespace NppTranslatePanel.Forms
             providerChoices.Controls.Add(deepLProvider);
             providerBox.Controls.Add(providerChoices);
             AddWideRow(translatorLayout, providerBox);
+
+            var privacyBox = new GroupBox
+            {
+                Text = "Privacy notice",
+                AutoSize = true,
+                Padding = new Padding(12),
+                Margin = new Padding(0, 0, 0, 12)
+            };
+            privacyBox.Controls.Add(new Label
+            {
+                Text = "Text requested for translation is sent over the internet to the selected third-party service. " +
+                    "Do not translate confidential or sensitive content unless this is acceptable and permitted.",
+                AutoSize = true,
+                MaximumSize = new Size(475, 0),
+                Dock = DockStyle.Fill
+            });
+            AddWideRow(translatorLayout, privacyBox);
 
             sourceLanguage = AddTextField(translatorLayout, "Source language", settings.source_language,
                 "Language code such as en, cs, or de.");
@@ -139,6 +170,39 @@ namespace NppTranslatePanel.Forms
             });
             useNppStyling = AddCheckBox(behaviorLayout,
                 "Use Notepad++ editor colors for plugin windows", settings.use_npp_styling);
+
+            var cacheBox = new GroupBox
+            {
+                Text = "Translation cache",
+                AutoSize = true,
+                Padding = new Padding(12),
+                Margin = new Padding(0, 10, 0, 0)
+            };
+            var cacheLayout = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false
+            };
+            cacheLayout.Controls.Add(new Label
+            {
+                Text = "Clear translations cached during this Notepad++ session. " +
+                    "The next translation will request them from the selected service again.",
+                AutoSize = true,
+                MaximumSize = new Size(450, 0),
+                Margin = new Padding(0, 0, 0, 8)
+            });
+            var clearCacheButton = new Button
+            {
+                Text = "Clear Translation Cache",
+                AutoSize = true,
+                Margin = new Padding(0)
+            };
+            clearCacheButton.Click += ClearCacheButton_Click;
+            cacheLayout.Controls.Add(clearCacheButton);
+            cacheBox.Controls.Add(cacheLayout);
+            AddWideRow(behaviorLayout, cacheBox);
 
             var buttons = new FlowLayoutPanel
             {
@@ -275,6 +339,8 @@ namespace NppTranslatePanel.Forms
             settings.synchronize_scrolling = synchronizeScrolling.Checked;
             settings.match_source_syntax_highlighting = matchSourceSyntaxHighlighting.Checked;
             settings.use_npp_styling = useNppStyling.Checked;
+            if (resetPrivacyConsent)
+                settings.privacy_notice_accepted_provider = string.Empty;
             settings.OnSettingsChanged();
             DialogResult = DialogResult.OK;
             Close();
@@ -289,11 +355,19 @@ namespace NppTranslatePanel.Forms
             deepLApiKey.Clear();
             deepLUseFreeApi.Checked = true;
             debounce.Value = 1000;
-            autoTranslate.Checked = true;
-            translateOnTabChange.Checked = true;
+            autoTranslate.Checked = false;
+            translateOnTabChange.Checked = false;
             synchronizeScrolling.Checked = true;
             matchSourceSyntaxHighlighting.Checked = true;
             useNppStyling.Checked = true;
+            resetPrivacyConsent = true;
+        }
+
+        private void ClearCacheButton_Click(object sender, EventArgs e)
+        {
+            clearTranslationCache();
+            MessageBox.Show(this, "Translation cache cleared.",
+                "NppTranslatePanel", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void UpdateProviderControls()

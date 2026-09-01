@@ -129,6 +129,7 @@
     <Compile Include="Utils\Npp.cs" />
     <Compile Include="Utils\NanInf.cs" />
     <Compile Include="Utils\NppListener.cs" />
+    <Compile Include="Utils\PrivacyConsent.cs" />
     <Compile Include="Utils\Settings.cs" />
     <Compile Include="Utils\SecretProtector.cs" />
     <Compile Include="Utils\ContainerSyntaxHighlighter.cs" />

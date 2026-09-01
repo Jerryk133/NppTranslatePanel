@@ -16,6 +16,7 @@ namespace NppTranslatePanel.Forms
         private readonly Timer scrollPollTimer;
         private int lastPanelFirstLine;
         private bool synchronizingScroll;
+        private bool selectionOnly;
         private string translatedText = string.Empty;
 
         public TranslatePanel() : base(isModal: false, isDocking: true)
@@ -65,7 +66,10 @@ namespace NppTranslatePanel.Forms
             ContainerSyntaxHighlighter.Apply(txtOutput.Gateway, translatedText,
                 Main.settings.match_source_syntax_highlighting);
             lblStatus.Text = "Updated " + DateTime.Now.ToString("HH:mm:ss");
-            SyncFromEditor();
+            if (selectionOnly)
+                ScrollPanelToLine(0);
+            else
+                SyncFromEditor();
         }
 
         public void ShowError(string message)
@@ -75,17 +79,26 @@ namespace NppTranslatePanel.Forms
 
         public void ShowTranslating(TranslationRunInfo info)
         {
-            lblStatus.Text = string.Format("Translating {0:N0} characters with {1}...",
-                info.CharacterCount, info.Provider);
+            lblStatus.Text = info.SelectionOnly
+                ? string.Format("Translating selection ({0:N0} characters) with {1}...",
+                    info.CharacterCount, info.Provider)
+                : string.Format("Translating {0:N0} characters with {1}...",
+                    info.CharacterCount, info.Provider);
         }
 
         public void ShowCompleted(TranslationRunInfo info)
         {
             lblStatus.Text = string.Format(
-                "{0} | {1:N0} chars | {2} API request{3} | {4} cached | {5:0.0}s",
-                info.Provider, info.CharacterCount, info.ApiRequests,
+                "{0} | {1}{2:N0} chars | {3} API request{4} | {5} cached | {6:0.0}s",
+                info.Provider, info.SelectionOnly ? "Selection | " : string.Empty,
+                info.CharacterCount, info.ApiRequests,
                 info.ApiRequests == 1 ? string.Empty : "s", info.CacheHits,
                 info.Duration.TotalSeconds);
+        }
+
+        public void SetSelectionOnly(bool value)
+        {
+            selectionOnly = value;
         }
 
         public void SetStatus(string text)
@@ -96,7 +109,7 @@ namespace NppTranslatePanel.Forms
         /// <summary>Moves the translation panel to the same proportional position as the editor.</summary>
         public void SyncFromEditor()
         {
-            if (!Main.settings.synchronize_scrolling || synchronizingScroll
+            if (selectionOnly || !Main.settings.synchronize_scrolling || synchronizingScroll
                 || Npp.editor == null || txtOutput == null || !txtOutput.IsHandleCreated)
                 return;
 
@@ -117,7 +130,8 @@ namespace NppTranslatePanel.Forms
         {
             try
             {
-                if (IsDisposed || !Visible || !Main.settings.synchronize_scrolling || synchronizingScroll
+                if (IsDisposed || !Visible || selectionOnly
+                    || !Main.settings.synchronize_scrolling || synchronizingScroll
                     || txtOutput.IsDisposed || !txtOutput.IsHandleCreated)
                     return;
 

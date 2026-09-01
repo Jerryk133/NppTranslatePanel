@@ -2,6 +2,20 @@
 
 All notable changes to NppTranslatePanel are documented in this file.
 
+## 0.3.0 — 2026-09-01
+
+- Disabled automatic translation after editing and tab changes by default for new installations
+- Opening the Translate panel no longer sends document text unless automatic translation was explicitly enabled
+- Renamed **Translate Now** to the unambiguous **Translate Document** command
+- Kept **Translate Document** functional when it opens the panel
+- Added a permanent third-party data-sharing warning to the Translator settings tab
+- Added one-time privacy confirmation before the first request to each translation provider
+- Declining privacy confirmation cancels the request and disables automatic translation
+- Added **Translate Selection** for explicitly translating only the active editor selection
+- Exposed selection translation through Notepad++ Shortcut Mapper without assigning a conflicting default shortcut
+- Disabled synchronized scrolling while a selection-only result is displayed
+- Added **Clear Translation Cache** to Application Behavior settings with immediate confirmation
+
 ## 0.2.0 — 2026-08-28
 
 - Replaced the plain translation text box with a read-only Scintilla editor
