@@ -11,7 +11,11 @@ namespace NppTranslatePanel.Translation
     /// </summary>
     public static class Segmenter
     {
-        private static readonly Regex ParagraphBreak = new Regex(@"(?:\r\n|\r|\n){2,}", RegexOptions.Compiled);
+        // A Windows CRLF pair must count as one line break. The lone-CR and lone-LF
+        // alternatives explicitly exclude CRLF so regex backtracking cannot reinterpret
+        // one CRLF as two breaks and split every Windows line into its own paragraph.
+        private static readonly Regex ParagraphBreak = new Regex(
+            @"(?:\r\n|\r(?!\n)|(?<!\r)\n){2,}", RegexOptions.Compiled);
 
         public static List<string> SplitParagraphs(string text)
         {

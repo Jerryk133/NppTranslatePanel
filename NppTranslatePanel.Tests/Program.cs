@@ -19,6 +19,7 @@ namespace NppTranslatePanel.Tests
             {
                 Run("Segmenter handles empty text", SegmenterHandlesEmptyText);
                 Run("Segmenter splits paragraphs", SegmenterSplitsParagraphs);
+                Run("Segmenter preserves single CRLF line breaks", SegmenterPreservesSingleCrLfLineBreaks);
                 Run("Cache separates language pairs", CacheSeparatesLanguagePairs);
                 Run("Cache remains bounded", CacheRemainsBounded);
                 Run("Cache can be cleared explicitly", CacheCanBeClearedExplicitly);
@@ -29,6 +30,8 @@ namespace NppTranslatePanel.Tests
                 Run("Automatic translation defaults are privacy-safe", AutomaticTranslationDefaultsArePrivacySafe);
                 Run("Privacy consent is provider-specific", PrivacyConsentIsProviderSpecific);
                 Run("Selection translation uses only supplied text", SelectionTranslationUsesOnlySuppliedText);
+                Run("Smart command chooses selection when available", SmartCommandChoosesSelectionWhenAvailable);
+                Run("Toolbar icon variants are created", ToolbarIconVariantsAreCreated);
                 Console.WriteLine("All {0} tests passed.", passed);
                 return 0;
             }
@@ -55,6 +58,15 @@ namespace NppTranslatePanel.Tests
         {
             List<string> result = Segmenter.SplitParagraphs("First\r\n\r\nSecond\n\nThird");
             Assert(result.SequenceEqual(new[] { "First", "Second", "Third" }), "Paragraph split was incorrect.");
+        }
+
+        private static void SegmenterPreservesSingleCrLfLineBreaks()
+        {
+            const string source = "First\r\nSecond\r\nThird";
+            List<string> result = Segmenter.SplitParagraphs(source);
+
+            Assert(result.Count == 1, "Single CRLF line breaks were treated as paragraph breaks.");
+            Assert(result[0] == source, "CRLF line structure was not preserved inside a paragraph.");
         }
 
         private static void CacheSeparatesLanguagePairs()
@@ -189,6 +201,28 @@ namespace NppTranslatePanel.Tests
                 "Selection translation did not use the supplied text.");
             Assert(started != null && started.SelectionOnly && started.CharacterCount == 13,
                 "Selection translation scope was not reported correctly.");
+        }
+
+        private static void SmartCommandChoosesSelectionWhenAvailable()
+        {
+            Assert(!Kbg.NppPluginNET.Main.ShouldTranslateSelection(0),
+                "Smart translation chose selection without selected text.");
+            Assert(Kbg.NppPluginNET.Main.ShouldTranslateSelection(1),
+                "Smart translation ignored selected text.");
+        }
+
+        private static void ToolbarIconVariantsAreCreated()
+        {
+            using (var icons = new ToolbarIconSet())
+            {
+                var handles = icons.Handles;
+                Assert(handles.hToolbarBmp != IntPtr.Zero,
+                    "Classic toolbar bitmap was not created.");
+                Assert(handles.hToolbarIcon != IntPtr.Zero,
+                    "Light toolbar icon was not created.");
+                Assert(handles.hToolbarIconDarkMode != IntPtr.Zero,
+                    "Dark toolbar icon was not created.");
+            }
         }
 
         private sealed class EchoTranslator : ITranslator

@@ -29,7 +29,9 @@ namespace Kbg.NppPluginNET
         static internal int IdTranslatePanel = -1;
         static internal int IdTranslateDocument = -1;
         static internal int IdTranslateSelection = -1;
+        static internal int IdTranslate = -1;
         private static bool privacyConfirmationVisible;
+        private static ToolbarIconSet toolbarIconSet;
         #endregion
 
         #region " Startup/CleanUp "
@@ -50,7 +52,8 @@ namespace Kbg.NppPluginNET
             IdTranslateDocument = 1;
             PluginBase.SetCommand(2, Translator.GetTranslatedMenuItem("Translate &Selection"), TranslateSelection);
             IdTranslateSelection = 2;
-            PluginBase.SetCommand(3, Translator.GetTranslatedMenuItem("---"), null);
+            PluginBase.SetCommand(3, Translator.GetTranslatedMenuItem("&Translate"), Translate);
+            IdTranslate = 3;
             PluginBase.SetCommand(4, Translator.GetTranslatedMenuItem("&Settings"), OpenSettings);
             PluginBase.SetCommand(5, Translator.GetTranslatedMenuItem("---"), null);
             PluginBase.SetCommand(6, Translator.GetTranslatedMenuItem("&About"), ShowAbout);
@@ -137,7 +140,28 @@ namespace Kbg.NppPluginNET
                 translatePanel.Close();
                 translatePanel.Dispose();
             }
+            toolbarIconSet?.Dispose();
+            toolbarIconSet = null;
             isShuttingDown = true;
+        }
+
+        static internal void RegisterToolbarIcon()
+        {
+            if (IdTranslate < 0)
+                return;
+
+            try
+            {
+                if (toolbarIconSet == null)
+                    toolbarIconSet = new ToolbarIconSet();
+                Npp.notepad.AddToolbarIcon(IdTranslate, toolbarIconSet.Handles);
+            }
+            catch (Exception ex)
+            {
+                // A toolbar button is an optional convenience. Never let a graphics or
+                // compatibility problem prevent Notepad++ from loading the plugin.
+                Debug.WriteLine("NppTranslatePanel toolbar icon registration failed: " + ex.Message);
+            }
         }
         #endregion
 
@@ -177,6 +201,19 @@ namespace Kbg.NppPluginNET
                 ShowTranslatePanel();
             if (EnsurePrivacyConsent())
                 TranslateCurrentDocument();
+        }
+
+        static void Translate()
+        {
+            if (ShouldTranslateSelection(Npp.editor?.GetSelectionLength() ?? 0))
+                TranslateSelection();
+            else
+                TranslateDocument();
+        }
+
+        internal static bool ShouldTranslateSelection(int selectionLength)
+        {
+            return selectionLength > 0;
         }
 
         static void TranslateSelection()

@@ -24,12 +24,45 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
 
         public void AddToolbarIcon(int funcItemsIndex, toolbarIcons icon)
         {
+            SendToolbarIcon(funcItemsIndex, icon, NppMsg.NPPM_ADDTOOLBARICON);
+        }
+
+        public void AddToolbarIcon(int funcItemsIndex, toolbarIconsWithDarkMode icon)
+        {
+            int[] version = GetNppVersion();
+            if (VersionAtLeast(version, 8, 4, 0))
+            {
+                SendToolbarIcon(funcItemsIndex, icon, NppMsg.NPPM_ADDTOOLBARICON_FORDARKMODE);
+                return;
+            }
+
+            AddToolbarIcon(funcItemsIndex, new toolbarIcons
+            {
+                hToolbarBmp = icon.hToolbarBmp,
+                hToolbarIcon = icon.hToolbarIcon
+            });
+        }
+
+        private static bool VersionAtLeast(int[] version, int major, int minor, int bugfix)
+        {
+            if (version == null || version.Length < 3)
+                return false;
+            if (version[0] != major)
+                return version[0] > major;
+            if (version[1] != minor)
+                return version[1] > minor;
+            return version[2] >= bugfix;
+        }
+
+        private static void SendToolbarIcon<T>(int funcItemsIndex, T icon, NppMsg message)
+            where T : struct
+        {
             IntPtr pTbIcons = Marshal.AllocHGlobal(Marshal.SizeOf(icon));
             try {
                 Marshal.StructureToPtr(icon, pTbIcons, false);
                 _ = Win32.SendMessage(
                     PluginBase.nppData._nppHandle,
-                    (uint) NppMsg.NPPM_ADDTOOLBARICON,
+                    (uint) message,
                     PluginBase._funcItems.Items[funcItemsIndex]._cmdID,
                     pTbIcons);
             } finally {

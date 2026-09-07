@@ -11,6 +11,7 @@ The plugin supports [DeepL API](https://developers.deepl.com/docs) and the free 
 - Optional automatic refresh after typing stops
 - Manual translation with **Plugins > NppTranslatePanel > Translate Document**
 - Translation of only the selected text with **Translate Selection**
+- One-click **Translate** command and toolbar button that use the selection when present, otherwise the complete document
 - Configurable source and target languages
 - Paragraph-level cache to avoid translating unchanged text again
 - Manual clearing of the in-memory translation cache from **Settings > Application Behavior**
@@ -53,9 +54,10 @@ The plugin menu contains:
 - **Show Translate Panel** — shows or hides the dockable panel.
 - **Translate Document** — opens the panel if necessary and translates the complete active document.
 - **Translate Selection** — translates only the active editor selection and opens the panel if necessary.
+- **Translate** — translates the active selection when present; otherwise it translates the complete document. The toolbar button runs this same command.
 - **Settings** — opens the plugin settings dialog.
 
-Plugin commands are available in Notepad++ **Shortcut Mapper**, where users can assign their preferred keyboard shortcuts without imposing global defaults.
+Plugin commands are available in **Settings > Shortcut Mapper > Plugin commands**, where users can assign their preferred keyboard shortcuts without imposing global defaults. Assign a shortcut to **Translate** to use the same selection-or-document behavior from the keyboard.
 
 Automatic translation after editing or switching tabs is disabled by default and can be enabled in **Settings**. Translation always stops while the panel is hidden so that API quota is not consumed unnecessarily.
 

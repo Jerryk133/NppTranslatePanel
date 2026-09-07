@@ -2,6 +2,13 @@
 
 All notable changes to NppTranslatePanel are documented in this file.
 
+## 0.3.1 — 2026-09-07
+
+- Fixed Windows CRLF line endings being misinterpreted as blank lines, which inserted an empty line between every translated source line
+- Added a smart **Translate** command that translates the selection when present, otherwise the complete document
+- Added a **Translate** toolbar button with light, dark, and classic icon variants
+- Exposed the smart command in Notepad++ Shortcut Mapper without assigning a potentially conflicting default shortcut
+
 ## 0.3.0 — 2026-09-01
 
 - Disabled automatic translation after editing and tab changes by default for new installations
