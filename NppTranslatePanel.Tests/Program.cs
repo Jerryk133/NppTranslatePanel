@@ -32,6 +32,9 @@ namespace NppTranslatePanel.Tests
                 Run("Selection translation uses only supplied text", SelectionTranslationUsesOnlySuppliedText);
                 Run("Smart command chooses selection when available", SmartCommandChoosesSelectionWhenAvailable);
                 Run("Toolbar icon variants are created", ToolbarIconVariantsAreCreated);
+                Run("Translation export preserves source extension", TranslationExportPreservesSourceExtension);
+                Run("Selection export identifies its scope", SelectionExportIdentifiesItsScope);
+                Run("Translation export detects the source path", TranslationExportDetectsSourcePath);
                 Console.WriteLine("All {0} tests passed.", passed);
                 return 0;
             }
@@ -223,6 +226,34 @@ namespace NppTranslatePanel.Tests
                 Assert(handles.hToolbarIconDarkMode != IntPtr.Zero,
                     "Dark toolbar icon was not created.");
             }
+        }
+
+        private static void TranslationExportPreservesSourceExtension()
+        {
+            string name = TranslationExport.BuildSuggestedFileName(
+                @"E:\B4X\Fireworks.bas", "cs", false);
+            Assert(name == "Fireworks.cs.bas",
+                "Translated filename did not preserve the source extension.");
+            Assert(TranslationExport.GetDefaultExtension(@"E:\B4X\Fireworks.bas") == "bas",
+                "Translated file dialog did not use the source extension.");
+        }
+
+        private static void SelectionExportIdentifiesItsScope()
+        {
+            string name = TranslationExport.BuildSuggestedFileName(
+                @"E:\docs\README.md", "de", true);
+            Assert(name == "README.selection.de.md",
+                "Selection export filename did not identify its scope.");
+        }
+
+        private static void TranslationExportDetectsSourcePath()
+        {
+            Assert(TranslationExport.PathsEqual(
+                @"E:\B4X\Fireworks.bas", @"e:\b4x\.\Fireworks.bas"),
+                "Equivalent Windows paths were not detected.");
+            Assert(!TranslationExport.PathsEqual(
+                @"E:\B4X\Fireworks.bas", @"E:\B4X\Fireworks.cs.bas"),
+                "Different output and source paths were treated as equal.");
         }
 
         private sealed class EchoTranslator : ITranslator

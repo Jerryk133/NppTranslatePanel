@@ -18,10 +18,15 @@ namespace NppTranslatePanel.Forms
         private bool synchronizingScroll;
         private bool selectionOnly;
         private string translatedText = string.Empty;
+        private TranslationOutput pendingOutput;
+        private TranslationOutput currentOutput;
 
         public TranslatePanel() : base(isModal: false, isDocking: true)
         {
             InitializeComponent();
+            btnOpenInNewTab.Click += (s, e) => Main.OpenTranslationInNewTab();
+            btnSaveAs.Click += (s, e) => Main.SaveTranslationAs();
+            UpdateActionButtons();
             scrollPollTimer = new Timer { Interval = 100 };
             scrollPollTimer.Tick += (s, e) => PollPanelScroll();
             scrollPollTimer.Start();
@@ -62,6 +67,11 @@ namespace NppTranslatePanel.Forms
         public void SetTranslatedText(string text)
         {
             translatedText = text ?? string.Empty;
+            TranslationOutput context = pendingOutput ?? CreateCurrentOutputContext();
+            currentOutput = new TranslationOutput(
+                translatedText, context.SourceFilePath, context.TargetLanguage,
+                context.SourceLanguage, context.SelectionOnly);
+            pendingOutput = null;
             txtOutput.SetContent(translatedText);
             ContainerSyntaxHighlighter.Apply(txtOutput.Gateway, translatedText,
                 Main.settings.match_source_syntax_highlighting);
@@ -70,6 +80,39 @@ namespace NppTranslatePanel.Forms
                 ScrollPanelToLine(0);
             else
                 SyncFromEditor();
+            UpdateActionButtons();
+        }
+
+        public void PrepareTranslationOutput(string sourceFilePath, LangType sourceLanguage,
+            string targetLanguage, bool isSelectionOnly)
+        {
+            pendingOutput = new TranslationOutput(string.Empty, sourceFilePath, targetLanguage,
+                sourceLanguage, isSelectionOnly);
+        }
+
+        internal bool TryGetTranslationOutput(out TranslationOutput output)
+        {
+            if (currentOutput == null || string.IsNullOrEmpty(currentOutput.Text))
+            {
+                output = null;
+                return false;
+            }
+
+            output = currentOutput;
+            return true;
+        }
+
+        private TranslationOutput CreateCurrentOutputContext()
+        {
+            return new TranslationOutput(string.Empty, Npp.notepad.GetCurrentFilePath(),
+                Main.settings.target_language, Npp.notepad.GetCurrentLanguage(), selectionOnly);
+        }
+
+        private void UpdateActionButtons()
+        {
+            bool enabled = currentOutput != null && !string.IsNullOrEmpty(currentOutput.Text);
+            btnOpenInNewTab.Enabled = enabled;
+            btnSaveAs.Enabled = enabled;
         }
 
         public void ShowError(string message)
@@ -106,6 +149,16 @@ namespace NppTranslatePanel.Forms
             lblStatus.Text = text;
         }
 
+        /// <summary>Matches the translation panel's zoom level to the active editor.</summary>
+        public void SyncZoomFromEditor()
+        {
+            if (Npp.editor == null || txtOutput == null || txtOutput.IsDisposed
+                || !txtOutput.IsHandleCreated)
+                return;
+
+            txtOutput.Gateway.SetZoom(Npp.editor.GetZoom());
+        }
+
         /// <summary>Moves the translation panel to the same proportional position as the editor.</summary>
         public void SyncFromEditor()
         {
@@ -130,9 +183,14 @@ namespace NppTranslatePanel.Forms
         {
             try
             {
-                if (IsDisposed || !Visible || selectionOnly
-                    || !Main.settings.synchronize_scrolling || synchronizingScroll
-                    || txtOutput.IsDisposed || !txtOutput.IsHandleCreated)
+                if (IsDisposed || !Visible || txtOutput.IsDisposed
+                    || !txtOutput.IsHandleCreated)
+                    return;
+
+                SyncWrapMode();
+
+                if (selectionOnly || !Main.settings.synchronize_scrolling
+                    || synchronizingScroll)
                     return;
 
                 int firstLine = GetPanelFirstVisibleLine();
@@ -146,6 +204,17 @@ namespace NppTranslatePanel.Forms
             {
                 scrollPollTimer.Stop();
             }
+        }
+
+        private void SyncWrapMode()
+        {
+            if (Npp.editor == null)
+                return;
+
+            ScintillaGateway panelEditor = txtOutput.Gateway;
+            Wrap sourceWrapMode = Npp.editor.GetWrapMode();
+            if (panelEditor.GetWrapMode() != sourceWrapMode)
+                ScintillaStyleSynchronizer.ApplyWrapMode(panelEditor, sourceWrapMode);
         }
 
         private void SyncEditorFromPanel(int firstPanelLine)

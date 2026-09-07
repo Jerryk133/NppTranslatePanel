@@ -45,7 +45,8 @@ namespace NppTranslatePanel.Forms
             gateway = new ScintillaGateway(Handle);
             gateway.SetCodePage(65001); // UTF-8
             gateway.SetReadOnly(true);
-            gateway.SetHScrollBar(false);
+            gateway.SetHScrollBar(true);
+            gateway.SetScrollWidthTracking(true);
             gateway.SetVScrollBar(true);
             gateway.SetMarginWidthN(0, 0);
         }

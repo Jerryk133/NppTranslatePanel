@@ -138,6 +138,7 @@
     <Compile Include="Utils\DiagnosticsLogger.cs" />
     <Compile Include="Utils\Translator.cs" />
     <Compile Include="Utils\ToolbarIconSet.cs" />
+    <Compile Include="Utils\TranslationExport.cs" />
     <!-- JSON parsing (used by Translator for UI language files, and by MyMemoryTranslator for API responses) -->
     <Compile Include="JSON_Tools\JNode.cs" />
     <Compile Include="JSON_Tools\JsonParser.cs" />

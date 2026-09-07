@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows.Forms;
 using Kbg.NppPluginNET.PluginInfrastructure;
 using NppTranslatePanel.Forms;
@@ -31,6 +32,7 @@ namespace Kbg.NppPluginNET
         static internal int IdTranslateSelection = -1;
         static internal int IdTranslate = -1;
         private static bool privacyConfirmationVisible;
+        private static bool creatingTranslationDocument;
         private static ToolbarIconSet toolbarIconSet;
         #endregion
 
@@ -54,9 +56,12 @@ namespace Kbg.NppPluginNET
             IdTranslateSelection = 2;
             PluginBase.SetCommand(3, Translator.GetTranslatedMenuItem("&Translate"), Translate);
             IdTranslate = 3;
-            PluginBase.SetCommand(4, Translator.GetTranslatedMenuItem("&Settings"), OpenSettings);
-            PluginBase.SetCommand(5, Translator.GetTranslatedMenuItem("---"), null);
-            PluginBase.SetCommand(6, Translator.GetTranslatedMenuItem("&About"), ShowAbout);
+            PluginBase.SetCommand(4, Translator.GetTranslatedMenuItem("Open Translation in New &Tab"), OpenTranslationInNewTab);
+            PluginBase.SetCommand(5, Translator.GetTranslatedMenuItem("&Save Translation As..."), SaveTranslationAs);
+            PluginBase.SetCommand(6, Translator.GetTranslatedMenuItem("---"), null);
+            PluginBase.SetCommand(7, Translator.GetTranslatedMenuItem("&Settings"), OpenSettings);
+            PluginBase.SetCommand(8, Translator.GetTranslatedMenuItem("---"), null);
+            PluginBase.SetCommand(9, Translator.GetTranslatedMenuItem("&About"), ShowAbout);
         }
 
         private static Assembly LoadDependency(object sender, ResolveEventArgs args)
@@ -101,19 +106,27 @@ namespace Kbg.NppPluginNET
                 Npp.editor = new ScintillaGateway(PluginBase.GetCurrentScintilla());
                 if (translatePanel != null && !translatePanel.IsDisposed)
                     translatePanel.ApplyEditorFont();
-                if (settings.translate_on_tab_change && watcher.Enabled && EnsurePrivacyConsent())
+                if (!creatingTranslationDocument && settings.translate_on_tab_change
+                    && watcher.Enabled && EnsurePrivacyConsent())
                     TranslateCurrentDocument();
                 return;
             case (uint)SciMsg.SCN_MODIFIED:
                 // Ignore styling, folding and marker notifications. Only actual text edits
                 // should restart the debounce timer and potentially consume API quota.
                 int textChangeMask = (int)SciMsg.SC_MOD_INSERTTEXT | (int)SciMsg.SC_MOD_DELETETEXT;
-                if (settings.auto_translate_on_edit && watcher.Enabled
+                if (!creatingTranslationDocument && settings.auto_translate_on_edit && watcher.Enabled
                     && (notification.ModificationType & textChangeMask) != 0
                     && EnsurePrivacyConsent())
                 {
                     SetSelectionOnly(false);
                     watcher.NotifyTextChanged();
+                }
+                break;
+            case (uint)SciMsg.SCN_ZOOM:
+                if (translatePanel != null && !translatePanel.IsDisposed
+                    && translatePanel.Visible)
+                {
+                    translatePanel.SyncZoomFromEditor();
                 }
                 break;
             case (uint)SciMsg.SCN_UPDATEUI:
@@ -238,6 +251,94 @@ namespace Kbg.NppPluginNET
             _ = watcher.TranslateTextNow(selectedText, true);
         }
 
+        internal static void OpenTranslationInNewTab()
+        {
+            if (!TryGetTranslationOutput(out TranslationOutput output))
+                return;
+
+            creatingTranslationDocument = true;
+            try
+            {
+                Npp.notepad.FileNew();
+                Npp.editor = new ScintillaGateway(PluginBase.GetCurrentScintilla());
+                Npp.editor.SetCodePage(65001);
+                Npp.editor.SetText(output.Text);
+                Npp.notepad.SetCurrentLanguage(output.SourceLanguage);
+                Npp.editor.SetCurrentPos(0);
+                Npp.editor.SetAnchor(0);
+                translatePanel.ApplyEditorFont();
+                translatePanel.SetStatus("Translation opened in a new tab. Use Ctrl+S to save it.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("The translation could not be opened in a new tab.\r\n\r\n" + ex.Message,
+                    "Open Translation", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                creatingTranslationDocument = false;
+            }
+        }
+
+        internal static void SaveTranslationAs()
+        {
+            if (!TryGetTranslationOutput(out TranslationOutput output))
+                return;
+
+            using (var dialog = new SaveFileDialog
+            {
+                AddExtension = true,
+                CheckPathExists = true,
+                OverwritePrompt = true,
+                FileName = TranslationExport.BuildSuggestedFileName(
+                    output.SourceFilePath, output.TargetLanguage, output.SelectionOnly),
+                Filter = TranslationExport.BuildFileFilter(output.SourceFilePath),
+                DefaultExt = TranslationExport.GetDefaultExtension(output.SourceFilePath),
+                Title = "Save Translation As"
+            })
+            {
+                string sourceDirectory = TranslationExport.GetExistingSourceDirectory(output.SourceFilePath);
+                if (!string.IsNullOrEmpty(sourceDirectory))
+                    dialog.InitialDirectory = sourceDirectory;
+
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                if (TranslationExport.PathsEqual(dialog.FileName, output.SourceFilePath))
+                {
+                    DialogResult overwrite = MessageBox.Show(
+                        "This is the original source document. Saving will overwrite it with the translation.\r\n\r\nContinue?",
+                        "Overwrite Source Document", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button2);
+                    if (overwrite != DialogResult.Yes)
+                        return;
+                }
+
+                try
+                {
+                    File.WriteAllText(dialog.FileName, output.Text, new UTF8Encoding(false));
+                    translatePanel.SetStatus("Translation saved to " + dialog.FileName);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("The translation could not be saved.\r\n\r\n" + ex.Message,
+                        "Save Translation", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private static bool TryGetTranslationOutput(out TranslationOutput output)
+        {
+            if (translatePanel != null && !translatePanel.IsDisposed
+                && translatePanel.TryGetTranslationOutput(out output))
+                return true;
+
+            output = null;
+            MessageBox.Show("Translate a document or selection before using this command.",
+                "No Translation Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
         static void ToggleTranslatePanel()
         {
             bool wasVisible = translatePanel != null && !translatePanel.IsDisposed && translatePanel.Visible;
@@ -323,7 +424,7 @@ namespace Kbg.NppPluginNET
                 translatePanel = new TranslatePanel();
                 watcher.TranslationReady += translatePanel.SetTranslatedText;
                 watcher.TranslationFailed += translatePanel.ShowError;
-                watcher.TranslationStarted += translatePanel.ShowTranslating;
+                watcher.TranslationStarted += HandleTranslationStarted;
                 watcher.TranslationCompleted += translatePanel.ShowCompleted;
                 translatePanel.ApplyEditorFont();
                 DisplayTranslatePanel(translatePanel);
@@ -334,6 +435,19 @@ namespace Kbg.NppPluginNET
                 Npp.notepad.ShowDockingForm(translatePanel);
             }
             watcher.Enabled = true;
+        }
+
+        private static void HandleTranslationStarted(TranslationRunInfo info)
+        {
+            if (translatePanel == null || translatePanel.IsDisposed)
+                return;
+
+            translatePanel.PrepareTranslationOutput(
+                Npp.notepad.GetCurrentFilePath(),
+                Npp.notepad.GetCurrentLanguage(),
+                settings.target_language,
+                info.SelectionOnly);
+            translatePanel.ShowTranslating(info);
         }
 
         private static void DisplayTranslatePanel(TranslatePanel form)

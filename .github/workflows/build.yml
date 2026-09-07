@@ -1,0 +1,116 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test unsigned packages
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Configure MSBuild
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
+
+      - name: Build and run tests
+        shell: pwsh
+        run: |
+          $testStage = Join-Path $env:RUNNER_TEMP "npp-translate-test-stage"
+          $arguments = @(
+            ".\NppTranslatePanel.Tests\NppTranslatePanel.Tests.csproj",
+            "/t:Restore,Build",
+            "/p:Configuration=Release",
+            "/p:Platform=x64",
+            "/p:RuntimeIdentifier=win-x64",
+            "/p:NppPluginsDir64=$testStage",
+            "/p:NppPluginsDir32=$testStage"
+          )
+          & msbuild @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Test build failed."
+          }
+
+          $testExecutable = Get-ChildItem ".\NppTranslatePanel.Tests\bin" -Recurse -Filter "NppTranslatePanel.Tests.exe" |
+            Where-Object { $_.FullName -match "[\\/]Release[\\/]" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $testExecutable) {
+            throw "The test executable was not produced."
+          }
+
+          & $testExecutable.FullName
+          if ($LASTEXITCODE -ne 0) {
+            throw "Tests failed."
+          }
+
+      - name: Build release packages
+        id: package
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            if ($env:GITHUB_REF_NAME -notmatch "^v(?<version>\d+\.\d+\.\d+)$") {
+              throw "Release tags must use the form vMAJOR.MINOR.PATCH."
+            }
+            $version = $Matches.version
+          }
+          else {
+            $version = "ci"
+          }
+
+          .\build-release.ps1 -Version $version
+
+          $artifactDirectory = Join-Path $PWD ("artifacts\v" + $version)
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $dll = Get-Item (Join-Path $artifactDirectory "stage-x64\NppTranslatePanel\NppTranslatePanel.dll")
+            $expectedFileVersion = $version + ".0"
+            if ($dll.VersionInfo.FileVersion -ne $expectedFileVersion) {
+              throw "Tag version $version does not match DLL version $($dll.VersionInfo.FileVersion)."
+            }
+          }
+
+          $checksumLines = Get-ChildItem $artifactDirectory -Filter "*.zip" |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            }
+          [IO.File]::WriteAllLines(
+            (Join-Path $artifactDirectory "SHA256SUMS.txt"),
+            $checksumLines,
+            [Text.UTF8Encoding]::new($false))
+
+          $relativeArtifactDirectory = "artifacts/v" + $version
+          "artifact_directory=$relativeArtifactDirectory" | Add-Content -Path $env:GITHUB_OUTPUT
+
+      - name: Upload unsigned signing input
+        id: upload-unsigned-signing-input
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: NppTranslatePanel-signing-input-${{ github.run_id }}
+          path: |
+            ${{ steps.package.outputs.artifact_directory }}/stage-x64/NppTranslatePanel/NppTranslatePanel.dll
+            ${{ steps.package.outputs.artifact_directory }}/stage-x86/NppTranslatePanel/NppTranslatePanel.dll
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload unsigned packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: NppTranslatePanel-unsigned-${{ github.run_id }}
+          path: |
+            ${{ steps.package.outputs.artifact_directory }}/*.zip
+            ${{ steps.package.outputs.artifact_directory }}/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

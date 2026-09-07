@@ -2,6 +2,18 @@
 
 All notable changes to NppTranslatePanel are documented in this file.
 
+## Unreleased
+
+- Added **Open Translation in New Tab**, preserving the source document language and syntax mode
+- Added **Save Translation As...** with a target-language filename, UTF-8 output, source extension preservation, and explicit source-overwrite protection
+- Added **Open in New Tab** and **Save As...** buttons to the Translate panel
+- Prevented opening a translated tab from triggering an automatic translation request
+- Enabled width-tracking horizontal scrolling for long unwrapped lines in the Translate panel
+- Prevented wrapped translation lines from being clipped beyond the panel edge
+- Kept the Translate panel's wrapping mode synchronized when Word Wrap is toggled
+- Synchronized zoom in, zoom out, and restored zoom with the Translate panel
+- Added privacy and code-signing policies plus a repeatable GitHub Actions build workflow
+
 ## 0.3.1 — 2026-09-07
 
 - Fixed Windows CRLF line endings being misinterpreted as blank lines, which inserted an empty line between every translated source line

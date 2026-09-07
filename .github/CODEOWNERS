@@ -1,0 +1,6 @@
+# Signing, privacy, and release automation require maintainer review.
+/CODE_SIGNING_POLICY.md @Jerryk133
+/PRIVACY.md @Jerryk133
+/THIRD_PARTY_NOTICES.md @Jerryk133
+/.github/workflows/ @Jerryk133
+/.signpath/ @Jerryk133

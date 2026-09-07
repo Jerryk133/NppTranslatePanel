@@ -141,6 +141,14 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
             Win32.SendMessage(PluginBase.nppData._nppHandle, (uint) NppMsg.NPPM_SETCURRENTLANGTYPE, Unused, (int) language);
         }
 
+        public LangType GetCurrentLanguage()
+        {
+            int language = (int)LangType.L_TEXT;
+            Win32.SendMessage(PluginBase.nppData._nppHandle,
+                (uint)NppMsg.NPPM_GETCURRENTLANGTYPE, Unused, out language);
+            return (LangType)language;
+        }
+
         /// <summary>
         /// open a standard save file dialog to save the current file<br></br>
         /// Returns true if the file was saved

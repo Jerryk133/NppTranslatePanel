@@ -24,13 +24,26 @@ namespace NppTranslatePanel.Utils
                 target.SetIndent(source.GetIndent());
                 target.SetUseTabs(source.GetUseTabs());
                 target.SetIndentationGuides(source.GetIndentationGuides());
-                target.SetWrapMode(source.GetWrapMode());
+                ApplyWrapMode(target, source.GetWrapMode());
                 target.SetZoom(source.GetZoom());
             }
             finally
             {
                 target.SetReadOnly(true);
             }
+        }
+
+        public static void ApplyWrapMode(ScintillaGateway target, Wrap wrapMode)
+        {
+            if (target == null)
+                return;
+
+            bool wrapping = wrapMode != Wrap.NONE;
+            target.SetWrapMode(wrapMode);
+            target.SetHScrollBar(!wrapping);
+            target.SetScrollWidthTracking(!wrapping);
+            if (wrapping)
+                target.SetXOffset(0);
         }
 
         private static void CopyStyles(ScintillaGateway source, ScintillaGateway target,

@@ -4,6 +4,8 @@ NppTranslatePanel is a Notepad++ plugin that continuously translates the active 
 
 The plugin supports [DeepL API](https://developers.deepl.com/docs) and the free [MyMemory Translation API](https://mymemory.translated.net/doc/spec.php). DeepL requires the user's own API key; MyMemory does not require one.
 
+[Privacy policy](PRIVACY.md) · [Code signing policy](CODE_SIGNING_POLICY.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/Jerryk133/NppTranslatePanel/releases)
+
 ## Features
 
 - Live translation of the active Notepad++ document
@@ -12,6 +14,8 @@ The plugin supports [DeepL API](https://developers.deepl.com/docs) and the free 
 - Manual translation with **Plugins > NppTranslatePanel > Translate Document**
 - Translation of only the selected text with **Translate Selection**
 - One-click **Translate** command and toolbar button that use the selection when present, otherwise the complete document
+- Open the current translation in a new Notepad++ tab while retaining the source syntax mode
+- Save the current translation as a UTF-8 file with the source extension and target-language filename
 - Configurable source and target languages
 - Paragraph-level cache to avoid translating unchanged text again
 - Manual clearing of the in-memory translation cache from **Settings > Application Behavior**
@@ -28,7 +32,7 @@ The plugin supports [DeepL API](https://developers.deepl.com/docs) and the free 
 - Windows
 - Notepad++
 - .NET Framework 4.8
-- Internet access to `api.mymemory.translated.net`
+- Internet access to `api.mymemory.translated.net`, `api-free.deepl.com`, or `api.deepl.com`, depending on the selected provider
 
 The plugin build must match the architecture of Notepad++: use `x64` for 64-bit Notepad++ and `x86` for 32-bit Notepad++.
 
@@ -55,6 +59,8 @@ The plugin menu contains:
 - **Translate Document** — opens the panel if necessary and translates the complete active document.
 - **Translate Selection** — translates only the active editor selection and opens the panel if necessary.
 - **Translate** — translates the active selection when present; otherwise it translates the complete document. The toolbar button runs this same command.
+- **Open Translation in New Tab** — opens the displayed translation as an editable Notepad++ document and applies the source document's language mode.
+- **Save Translation As...** — saves the displayed result without another API request. The suggested filename retains the source extension and includes the target language.
 - **Settings** — opens the plugin settings dialog.
 
 Plugin commands are available in **Settings > Shortcut Mapper > Plugin commands**, where users can assign their preferred keyboard shortcuts without imposing global defaults. Assign a shortcut to **Translate** to use the same selection-or-document behavior from the keyboard.
@@ -85,17 +91,29 @@ Language values are MyMemory language codes such as `en`, `cs`, `de`, or `fr`. A
 
 Settings are stored in the Notepad++ plugin configuration area under `NppTranslatePanel`.
 
-## MyMemory limits and privacy
+## Translation services and privacy
+
+See the full [privacy policy](PRIVACY.md) for the data sent to each provider, local storage, diagnostics, and user controls.
 
 MyMemory documents a free anonymous quota of 5,000 characters per day. Supplying an email address through `mymemory_contact_email` raises the documented free quota to 50,000 characters per day.
 
+MyMemory's terms state that submitted segments may be stored on a long-term basis. DeepL processes requests according to the terms of the user's API plan. Do not use either provider for confidential, sensitive, regulated, or third-party content unless sending it to that provider is acceptable and authorized.
+
 Text requested for translation is sent over HTTPS to the selected third-party service. Before the first request to a provider, the plugin asks for confirmation and remembers the accepted provider. Changing providers requires confirmation again. A permanent warning is also displayed in the Translator settings tab.
 
-Do not use the plugin for confidential or sensitive content unless sending that content to the selected provider is acceptable and permitted. Declining the confirmation cancels the request, sends no document text, and disables automatic translation.
+Declining the confirmation cancels the request, sends no document text, and disables automatic translation.
 
 Selection-only results do not participate in synchronized scrolling because they represent only part of the source document.
 
+The Translate panel also provides **Open in New Tab** and **Save As...** buttons. Saved translations use UTF-8 without a byte-order mark. Choosing the original source path requires an additional overwrite confirmation.
+
 The plugin splits the document into paragraphs and caches completed translations for the current session. Only changed or previously untranslated paragraphs normally require another API request. Paragraphs longer than 450 characters are divided into smaller requests.
+
+## Code signing
+
+Planned signing provider: Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+
+The SignPath Foundation application is being prepared. Until approval and activation of the automated signing workflow, release artifacts are unsigned. The repository's [code signing policy](CODE_SIGNING_POLICY.md) defines the build provenance, approval, signing, verification, and release requirements.
 
 ## Building from source
 
@@ -150,7 +168,7 @@ The main components are:
 - Translation requires an internet connection.
 - Formatting and the exact number of blank lines are not preserved in the translated preview.
 - Syntax highlighting is visual only; machine translation may still change programming-language tokens.
-- The panel does not write translated text back into the document.
+- The preview remains read-only; translated copies are created only through **Open Translation in New Tab** or **Save Translation As...**.
 - The translation cache exists only for the current Notepad++ session and is cleared when translation settings change.
 
 ## Diagnostics and tests
@@ -168,4 +186,4 @@ msbuild .\NppTranslatePanel.Tests\NppTranslatePanel.Tests.csproj /t:Restore,Buil
 
 Licensed under the [Apache License 2.0](LICENSE.md).
 
-The Notepad++ C# plugin infrastructure is derived from [NppCSharpPluginPack](https://github.com/molsonkiko/NppCSharpPluginPack) and the archived [NotepadPlusPlusPluginPack.Net](https://github.com/kbilsted/NotepadPlusPlusPluginPack.Net).
+The Notepad++ C# plugin infrastructure is derived from [NppCSharpPluginPack](https://github.com/molsonkiko/NppCSharpPluginPack) and the archived [NotepadPlusPlusPluginPack.Net](https://github.com/kbilsted/NotepadPlusPlusPluginPack.Net). See [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and dependency licensing.
