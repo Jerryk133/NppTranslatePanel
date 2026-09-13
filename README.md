@@ -50,9 +50,9 @@ C:\Program Files\Notepad++\plugins\NppTranslatePanel\NppTranslatePanel.dll
 
 ## Usage
 
-Open **Plugins > NppTranslatePanel > Show Translate Panel**. With the privacy-safe defaults, opening the panel does not send document text anywhere. Use **Translate** to request a translation, or explicitly enable automatic translation in **Settings**.
+To translate, first use the **Translate** button on the Notepad++ toolbar. It translates the active selection when text is selected; otherwise it translates the complete document and opens the panel when needed. Alternatively, use **Plugins > NppTranslatePanel > Translate**. With the privacy-safe defaults, opening **Show Translate Panel** alone does not send document text anywhere; automatic translation can be enabled explicitly in **Settings**.
 
-The plugin menu contains:
+The plugin menu also contains:
 
 - **Show Translate Panel** — shows or hides the dockable panel.
 - **Translate** — translates the active selection when present; otherwise it translates the complete document. The toolbar button runs this same command.
