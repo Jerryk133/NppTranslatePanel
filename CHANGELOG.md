@@ -2,8 +2,17 @@
 
 All notable changes to NppTranslatePanel are documented in this file.
 
-## Unreleased
+## 0.3.5 — 2026-09-13
 
+- Moved the animated progress indicator below the status text so translation details are never clipped
+
+## 0.3.4 — 2026-09-13
+
+- Added an animated progress indicator while a translation request is running
+
+## 0.3.3 — 2026-09-13
+
+- Simplified the menu: **Translate** is the primary selection-or-document command, and **Translate Document** is now **Translate Entire Document**; the redundant visible **Translate Selection** entry was removed while preserving its command ID for existing shortcuts
 - Added **Open Translation in New Tab**, preserving the source document language and syntax mode
 - Added **Save Translation As...** with a target-language filename, UTF-8 output, source extension preservation, and explicit source-overwrite protection
 - Added **Open in New Tab** and **Save As...** buttons to the Translate panel

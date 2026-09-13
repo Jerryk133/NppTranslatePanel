@@ -66,6 +66,7 @@ namespace NppTranslatePanel.Forms
 
         public void SetTranslatedText(string text)
         {
+            SetTranslationInProgress(false);
             translatedText = text ?? string.Empty;
             TranslationOutput context = pendingOutput ?? CreateCurrentOutputContext();
             currentOutput = new TranslationOutput(
@@ -117,11 +118,13 @@ namespace NppTranslatePanel.Forms
 
         public void ShowError(string message)
         {
+            SetTranslationInProgress(false);
             lblStatus.Text = "Error: " + message;
         }
 
         public void ShowTranslating(TranslationRunInfo info)
         {
+            SetTranslationInProgress(true);
             lblStatus.Text = info.SelectionOnly
                 ? string.Format("Translating selection ({0:N0} characters) with {1}...",
                     info.CharacterCount, info.Provider)
@@ -131,6 +134,7 @@ namespace NppTranslatePanel.Forms
 
         public void ShowCompleted(TranslationRunInfo info)
         {
+            SetTranslationInProgress(false);
             lblStatus.Text = string.Format(
                 "{0} | {1}{2:N0} chars | {3} API request{4} | {5} cached | {6:0.0}s",
                 info.Provider, info.SelectionOnly ? "Selection | " : string.Empty,
@@ -146,7 +150,14 @@ namespace NppTranslatePanel.Forms
 
         public void SetStatus(string text)
         {
+            SetTranslationInProgress(false);
             lblStatus.Text = text;
+        }
+
+        private void SetTranslationInProgress(bool value)
+        {
+            if (progressTranslation != null && !progressTranslation.IsDisposed)
+                progressTranslation.Visible = value;
         }
 
         /// <summary>Matches the translation panel's zoom level to the active editor.</summary>

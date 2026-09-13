@@ -11,9 +11,8 @@ The plugin supports [DeepL API](https://developers.deepl.com/docs) and the free 
 - Live translation of the active Notepad++ document
 - Dockable, read-only translation panel
 - Optional automatic refresh after typing stops
-- Manual translation with **Plugins > NppTranslatePanel > Translate Document**
-- Translation of only the selected text with **Translate Selection**
 - One-click **Translate** command and toolbar button that use the selection when present, otherwise the complete document
+- **Translate Entire Document** to override an active selection and always translate the complete document
 - Open the current translation in a new Notepad++ tab while retaining the source syntax mode
 - Save the current translation as a UTF-8 file with the source extension and target-language filename
 - Configurable source and target languages
@@ -51,14 +50,13 @@ C:\Program Files\Notepad++\plugins\NppTranslatePanel\NppTranslatePanel.dll
 
 ## Usage
 
-Open **Plugins > NppTranslatePanel > Show Translate Panel**. With the privacy-safe defaults, opening the panel does not send document text anywhere. Use **Translate Document** to request a translation, or explicitly enable automatic translation in **Settings**.
+Open **Plugins > NppTranslatePanel > Show Translate Panel**. With the privacy-safe defaults, opening the panel does not send document text anywhere. Use **Translate** to request a translation, or explicitly enable automatic translation in **Settings**.
 
 The plugin menu contains:
 
 - **Show Translate Panel** — shows or hides the dockable panel.
-- **Translate Document** — opens the panel if necessary and translates the complete active document.
-- **Translate Selection** — translates only the active editor selection and opens the panel if necessary.
 - **Translate** — translates the active selection when present; otherwise it translates the complete document. The toolbar button runs this same command.
+- **Translate Entire Document** — opens the panel if necessary and translates the complete active document, even when text is selected.
 - **Open Translation in New Tab** — opens the displayed translation as an editable Notepad++ document and applies the source document's language mode.
 - **Save Translation As...** — saves the displayed result without another API request. The suggested filename retains the source extension and includes the target language.
 - **Settings** — opens the plugin settings dialog.

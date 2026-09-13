@@ -28,8 +28,6 @@ namespace Kbg.NppPluginNET
         };
 
         static internal int IdTranslatePanel = -1;
-        static internal int IdTranslateDocument = -1;
-        static internal int IdTranslateSelection = -1;
         static internal int IdTranslate = -1;
         private static bool privacyConfirmationVisible;
         private static bool creatingTranslationDocument;
@@ -50,10 +48,10 @@ namespace Kbg.NppPluginNET
 
             PluginBase.SetCommand(0, Translator.GetTranslatedMenuItem("&Show Translate Panel"), ToggleTranslatePanel);
             IdTranslatePanel = 0;
-            PluginBase.SetCommand(1, Translator.GetTranslatedMenuItem("Translate &Document"), TranslateDocument);
-            IdTranslateDocument = 1;
+            PluginBase.SetCommand(1, Translator.GetTranslatedMenuItem("Translate &Entire Document"), TranslateEntireDocument);
+            // Keep this command at index 2 for existing Shortcut Mapper entries, but remove
+            // it from the visible menu once Notepad++ has created the plugin menu.
             PluginBase.SetCommand(2, Translator.GetTranslatedMenuItem("Translate &Selection"), TranslateSelection);
-            IdTranslateSelection = 2;
             PluginBase.SetCommand(3, Translator.GetTranslatedMenuItem("&Translate"), Translate);
             IdTranslate = 3;
             PluginBase.SetCommand(4, Translator.GetTranslatedMenuItem("Open Translation in New &Tab"), OpenTranslationInNewTab);
@@ -101,6 +99,9 @@ namespace Kbg.NppPluginNET
             uint code = notification.Header.Code;
             switch (code)
             {
+            case (uint)NppMsg.NPPN_READY:
+                HideRedundantSelectionMenuItem();
+                return;
             case (uint)NppMsg.NPPN_BUFFERACTIVATED:
                 // a new buffer became active; reconnect to its Scintilla instance and refresh the translation for it
                 Npp.editor = new ScintillaGateway(PluginBase.GetCurrentScintilla());
@@ -208,7 +209,7 @@ namespace Kbg.NppPluginNET
             }
         }
 
-        static void TranslateDocument()
+        static void TranslateEntireDocument()
         {
             if (translatePanel == null || translatePanel.IsDisposed || !translatePanel.Visible)
                 ShowTranslatePanel();
@@ -221,7 +222,7 @@ namespace Kbg.NppPluginNET
             if (ShouldTranslateSelection(Npp.editor?.GetSelectionLength() ?? 0))
                 TranslateSelection();
             else
-                TranslateDocument();
+                TranslateEntireDocument();
         }
 
         internal static bool ShouldTranslateSelection(int selectionLength)
@@ -233,7 +234,7 @@ namespace Kbg.NppPluginNET
         {
             if (Npp.editor == null || Npp.editor.GetSelectionLength() <= 0)
             {
-                MessageBox.Show("Select the text to translate, then run Translate Selection again.",
+                MessageBox.Show("Select the text to translate, or use Translate Entire Document.",
                     "No text selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -356,7 +357,7 @@ namespace Kbg.NppPluginNET
                     TranslateCurrentDocument();
             }
             else
-                translatePanel.SetStatus("Ready. Use Translate Document to translate this document.");
+                translatePanel.SetStatus("Ready. Use Translate to translate this document.");
         }
 
         private static bool EnsurePrivacyConsent()
@@ -435,6 +436,17 @@ namespace Kbg.NppPluginNET
                 Npp.notepad.ShowDockingForm(translatePanel);
             }
             watcher.Enabled = true;
+        }
+
+        private static void HideRedundantSelectionMenuItem()
+        {
+            IntPtr pluginsMenuHandle = Win32.SendMessage(
+                PluginBase.nppData._nppHandle,
+                (uint)NppMsg.NPPM_GETMENUHANDLE,
+                (int)NppMsg.NPPPLUGINMENU,
+                0);
+            if (pluginsMenuHandle != IntPtr.Zero)
+                PluginBase.HidePluginMenuItem(pluginsMenuHandle, 2);
         }
 
         private static void HandleTranslationStarted(TranslationRunInfo info)

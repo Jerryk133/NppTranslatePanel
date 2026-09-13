@@ -128,6 +128,7 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
         private static IntPtr _allPluginsMenuHandle = IntPtr.Zero;
         private static int _thisPluginIdxInAllPluginsMenu = -1;
         private static IntPtr _thisPluginMenuHandle = IntPtr.Zero;
+        private static readonly HashSet<int> _hiddenPluginMenuItemIndexes = new HashSet<int>();
 
         /// <summary>
         /// If allPluginsMenuHandle is a valid menu handle, and this plugin's name is the name of one of the submenus of allPluginsMenuHandle,<br></br>
@@ -160,12 +161,46 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
         {
             if (newNames.Count != _funcItems.Items.Count || !TrySetPluginsMenuHandle(allPluginsMenuHandle))
                 return false;
+
+            int menuItemIndex = 0;
             for (int ii = 0; ii < newNames.Count; ii++)
             {
+                if (_hiddenPluginMenuItemIndexes.Contains(ii))
+                    continue;
+
                 string newName = newNames[ii];
-                if (newName != "---" && !SetMenuItemText(_thisPluginMenuHandle, ii, newName))
+                if (newName != "---" && !SetMenuItemText(_thisPluginMenuHandle, menuItemIndex, newName))
                     return false;
+                menuItemIndex++;
             }
+            return true;
+        }
+
+        /// <summary>
+        /// Removes a command from this plugin's visible menu while keeping its function item
+        /// registered. This preserves command IDs used by existing Shortcut Mapper entries.
+        /// </summary>
+        public static bool HidePluginMenuItem(IntPtr allPluginsMenuHandle, int commandIndex)
+        {
+            if (commandIndex < 0 || commandIndex >= _funcItems.Items.Count)
+                return false;
+            if (_hiddenPluginMenuItemIndexes.Contains(commandIndex))
+                return true;
+            if (!TrySetPluginsMenuHandle(allPluginsMenuHandle))
+                return false;
+
+            int menuItemIndex = 0;
+            for (int ii = 0; ii < commandIndex; ii++)
+            {
+                if (!_hiddenPluginMenuItemIndexes.Contains(ii))
+                    menuItemIndex++;
+            }
+
+            if (!Win32.DeleteMenu(_thisPluginMenuHandle, (uint)menuItemIndex, Win32.MF_BYPOSITION))
+                return false;
+
+            _hiddenPluginMenuItemIndexes.Add(commandIndex);
+            Win32.DrawMenuBar(nppData._nppHandle);
             return true;
         }
 

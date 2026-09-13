@@ -356,6 +356,7 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
         public static extern int GetPrivateProfileSection(string lpAppName, byte[] lpszReturnBuffer, int nSize, string lpFileName);
 
         public const int MF_BYCOMMAND = 0;
+        public const int MF_BYPOSITION = 0x400;
         public const int MF_CHECKED = 8;
         public const int MF_UNCHECKED = 0;
         public const int MF_ENABLED = 0;
@@ -376,6 +377,12 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
 
         [DllImport("user32")]
         public static extern int GetMenuItemCount(IntPtr hMenu);
+
+        [DllImport("user32")]
+        public static extern bool DeleteMenu(IntPtr hMenu, uint uPosition, uint uFlags);
+
+        [DllImport("user32")]
+        public static extern bool DrawMenuBar(IntPtr hWnd);
 
         [DllImport("user32")]
         public static extern bool EnableMenuItem(IntPtr hMenu, int uIDEnableItem, int uEnable);
