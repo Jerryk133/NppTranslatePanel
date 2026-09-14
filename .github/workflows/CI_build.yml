@@ -1,0 +1,56 @@
+name: CI_build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_configuration: [Release, Debug]
+        build_platform: [x64, x86]
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v7
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v3
+
+    - name: MSBuild of plugin dll
+      working-directory: NppTranslatePanel\
+      run: msbuild NppTranslatePanel.csproj /m /p:configuration="${{ matrix.build_configuration }}" /p:platform="${{ matrix.build_platform }}"
+
+    - uses: olegtarasov/get-tag@v2.1.4
+      id: tagName
+
+    - name: zip artifacts for x64
+      if: matrix.build_platform == 'x64' && matrix.build_configuration == 'Release'
+      run: 7z a NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\NppTranslatePanel\bin\${{ matrix.build_configuration }}-x64\NppTranslatePanel.dll
+
+    - name: Archive artifacts for x64
+      if: matrix.build_platform == 'x64' && matrix.build_configuration == 'Release'
+      uses: actions/upload-artifact@v7
+      with:
+          name: NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+          path: NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+
+    - name: zip artifacts for x86
+      if: matrix.build_platform == 'x86' && matrix.build_configuration == 'Release'
+      run: 7z a NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\NppTranslatePanel\bin\${{ matrix.build_configuration }}\NppTranslatePanel.dll
+
+    - name: Archive artifacts for x86
+      if: matrix.build_platform == 'x86' && matrix.build_configuration == 'Release'
+      uses: actions/upload-artifact@v7
+      with:
+          name: NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+          path: NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+
+    - name: Create release on tagging
+      uses: softprops/action-gh-release@v3
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: NppTranslatePanel_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+
